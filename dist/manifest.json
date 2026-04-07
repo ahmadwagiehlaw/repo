@@ -1,0 +1,16 @@
+{
+  "name": "LawBase — النظام القانوني المتكامل",
+  "short_name": "LawBase",
+  "description": "نظام تشغيل قانوني للمحامين المصريين",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF8C00",
+  "background_color": "#ffffff",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/assets/icon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
