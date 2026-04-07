@@ -1,0 +1,65 @@
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    direction: rtl;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #000;
+    background: #fff !important;
+  }
+
+  nav,
+  .sidebar,
+  .desktop-sidebar,
+  .mobile-nav,
+  .app-header,
+  .page-header button,
+  .filter-chip,
+  .badge-btn,
+  .print-hide {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  .card,
+  .dashboard-widget,
+  .dashboard-widget-system {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border: 1px solid #d1d5db !important;
+    background: #fff !important;
+  }
+}
