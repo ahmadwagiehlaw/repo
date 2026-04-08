@@ -17,15 +17,54 @@ export default function JudgmentForm({
     <div
       style={{
         marginTop: 12,
-        padding: 16,
-        background: 'var(--bg-page)',
-        borderRadius: 'var(--radius-sm)',
+        padding: 18,
+        background: 'white',
+        borderRadius: 'var(--radius-md)',
         border: '1px solid var(--border)',
       }}
     >
       <h4 style={{ margin: '0 0 12px', fontSize: 14 }}>تسجيل حكم جديد</h4>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+        {/* طبيعة الحكم تتحكم في مسار القضية: التمهيدي يعود للجلسات، والنهائي يفتح متابعة الطعن. */}
+        <div className="form-group" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+          <label className="form-label">طبيعة الحكم</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            {[
+              { value: false, label: 'تمهيدي', desc: 'نقطة عبور: يمكن إعادة الدعوى للمرافعة.' },
+              { value: true, label: 'نهائي', desc: 'يغلق المسار ويفتح متابعة ميعاد الطعن عند اللزوم.' },
+            ].map((option) => {
+              const active = Boolean(form.isFinal) === option.value;
+              return (
+                <label
+                  key={option.label}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid',
+                    borderColor: active ? 'var(--primary)' : 'var(--border)',
+                    background: active ? 'var(--primary-light)' : 'var(--bg-page)',
+                    cursor: 'pointer',
+                    display: 'grid',
+                    gap: 4,
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 900, color: active ? 'var(--primary)' : 'var(--text-primary)' }}>
+                    <input
+                      type="radio"
+                      name={`jFinal-${caseItem.id}`}
+                      checked={active}
+                      onChange={() => onFieldChange('isFinal', option.value)}
+                    />
+                    {option.label}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>{option.desc}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="form-group">
           <label className="form-label">تاريخ جلسة الحكم</label>
           <input
@@ -124,28 +163,6 @@ export default function JudgmentForm({
             value={form.originSessionDate || ''}
             onChange={(e) => onFieldChange('originSessionDate', e.target.value)}
           />
-        </div>
-
-        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-          <label className="form-label">نوع الحكم</label>
-          <label style={{ marginLeft: 16, fontWeight: 400, cursor: 'pointer' }}>
-            <input
-              type="radio"
-              name={`jFinal-${caseItem.id}`}
-              checked={!form.isFinal}
-              onChange={() => onFieldChange('isFinal', false)}
-            />
-            {' '}تمهيدي
-          </label>
-          <label style={{ marginRight: 8, fontWeight: 400, cursor: 'pointer' }}>
-            <input
-              type="radio"
-              name={`jFinal-${caseItem.id}`}
-              checked={Boolean(form.isFinal)}
-              onChange={() => onFieldChange('isFinal', true)}
-            />
-            {' '}نهائي
-          </label>
         </div>
 
         <div className="form-group">

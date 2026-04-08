@@ -1058,6 +1058,64 @@ export const storage = {
       .delete();
   },
 
+  async saveCaseDocument(workspaceId, caseId, docData = {}) {
+    if (!workspaceId || !caseId) throw new Error('workspaceId وcaseId مطلوبان');
+    const now = new Date().toISOString();
+    const documentsRef = _db
+      .collection('workspaces')
+      .doc(String(workspaceId))
+      .collection('cases')
+      .doc(String(caseId))
+      .collection('documents');
+    const docRef = docData?.id ? documentsRef.doc(String(docData.id)) : documentsRef.doc();
+
+    const payload = {
+      id: docRef.id,
+      caseId: String(caseId),
+      workspaceId: String(workspaceId),
+      title: String(docData?.title || '').trim() || 'مستند',
+      htmlContent: String(docData?.htmlContent || ''),
+      type: String(docData?.type || 'custom').trim() || 'custom',
+      sourceTemplateId: String(docData?.sourceTemplateId || '').trim(),
+      sourceTemplateName: String(docData?.sourceTemplateName || '').trim(),
+      createdAt: docData?.createdAt || now,
+      updatedAt: now,
+    };
+
+    await docRef.set(payload, { merge: true });
+    return payload;
+  },
+
+  async getCaseDocuments(workspaceId, caseId) {
+    if (!workspaceId || !caseId) return [];
+    try {
+      const snapshot = await _db
+        .collection('workspaces')
+        .doc(String(workspaceId))
+        .collection('cases')
+        .doc(String(caseId))
+        .collection('documents')
+        .orderBy('updatedAt', 'desc')
+        .get();
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (err) {
+      console.error('[Storage.getCaseDocuments]', err);
+      return [];
+    }
+  },
+
+  async deleteCaseDocument(workspaceId, caseId, docId) {
+    if (!workspaceId || !caseId || !docId) throw new Error('workspaceId وcaseId وdocId مطلوبة');
+    await _db
+      .collection('workspaces')
+      .doc(String(workspaceId))
+      .collection('cases')
+      .doc(String(caseId))
+      .collection('documents')
+      .doc(String(docId))
+      .delete();
+  },
+
   async clearWorkspaceData(workspaceId) {
     ensureDb();
 
@@ -1065,6 +1123,10 @@ export const storage = {
     if (!resolvedWorkspaceId) throw new Error('workspaceId ظ…ط·ظ„ظˆط¨');
 
     const workspaceRef = _db.collection('workspaces').doc(resolvedWorkspaceId);
+    const casesSnapshot = await workspaceRef.collection('cases').get();
+    for (const caseDoc of casesSnapshot.docs) {
+      await deleteCollectionDocs(caseDoc.ref.collection('documents'));
+    }
     const collectionsToClear = [
       'cases',
       'sessions',

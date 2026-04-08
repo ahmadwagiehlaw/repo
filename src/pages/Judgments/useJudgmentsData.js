@@ -125,6 +125,7 @@ export function useJudgmentsData({ formatUiDate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('cards');
   const [addingJudgment, setAddingJudgment] = useState(null);
@@ -177,7 +178,12 @@ export function useJudgmentsData({ formatUiDate }) {
         });
 
         const hasDbJudgment = sourceJudgments.some((judgment) => String(judgment.caseId || '') === String(caseItem.id || ''));
-        return routeOrStatus || hasJudgmentInSessions || hasDbJudgment;
+        const hasLegacyJudgment = Boolean(
+          String(caseItem.summaryDecision || '').trim()
+            || String(caseItem.judgmentPronouncement || '').trim()
+            || String(caseItem.judgmentCategory || caseItem.judgmentType || '').trim()
+        );
+        return routeOrStatus || hasJudgmentInSessions || hasDbJudgment || hasLegacyJudgment;
       });
 
       setCases(judgmentCases);
@@ -198,7 +204,7 @@ export function useJudgmentsData({ formatUiDate }) {
 
   useEffect(() => {
     setPage(1);
-  }, [activeFilter, searchQuery, viewMode]);
+  }, [activeFilter, typeFilter, searchQuery, viewMode]);
 
   const judgmentsByCaseId = useMemo(() => {
     const map = new Map();
@@ -214,7 +220,22 @@ export function useJudgmentsData({ formatUiDate }) {
     const query = String(searchQuery || '').trim().toLowerCase();
 
     return cases.filter((caseItem) => {
-      const caseJudgments = judgmentsByCaseId.get(String(caseItem.id || '')) || [];
+      const caseJudgments = (judgmentsByCaseId.get(String(caseItem.id || '')) || []).slice();
+      const hasLegacyJudgment = Boolean(
+        String(caseItem.summaryDecision || '').trim()
+          || String(caseItem.judgmentPronouncement || '').trim()
+          || String(caseItem.judgmentCategory || caseItem.judgmentType || '').trim()
+      );
+      if (caseJudgments.length === 0 && hasLegacyJudgment) {
+        // نفس fallback المستخدم في كروت العرض حتى لا تختفي الأحكام المستوردة من الفلاتر.
+        caseJudgments.push({
+          judgmentType: caseItem.judgmentType || caseItem.judgmentCategory || JUDGMENT_TYPE.OTHER,
+          judgmentCategory: caseItem.judgmentCategory || JUDGMENT_TYPE.OTHER,
+          summaryDecision: caseItem.summaryDecision || '',
+          judgmentPronouncement: caseItem.judgmentPronouncement || '',
+          isFinal: true,
+        });
+      }
       const isPlaintiff = Boolean(caseItem.flags?.isPlaintiff) || detectIsPlaintiff(caseItem.roleCapacity);
 
       if (activeFilter === 'reserved') {
@@ -234,6 +255,30 @@ export function useJudgmentsData({ formatUiDate }) {
         if (!hasUrgent) return false;
       }
 
+      // Filter by Judgment Type: ندعم أحكام subcollection وحقول الاستيراد القديمة معًا.
+      if (activeFilter !== 'reserved' && typeFilter && typeFilter !== 'all') {
+        const typeConfig = judgmentTypes.find((type) => type.value === typeFilter);
+        const filterLabel = typeConfig ? typeConfig.label : typeFilter;
+
+        const hasMatchingJudgment = caseJudgments.some((judgment) => (
+          judgment.judgmentType === typeFilter
+          || judgment.judgmentCategory === typeFilter
+          || judgment.judgmentCategory === filterLabel
+        ));
+
+        const legacyCategory = String(caseItem.judgmentCategory || caseItem.judgmentType || '');
+        const legacySummary = String(caseItem.summaryDecision || '');
+        const hasLegacyMatch = (
+          legacyCategory === typeFilter
+          || legacyCategory === filterLabel
+          || legacySummary.includes(filterLabel)
+          || (typeFilter === 'deemed_non_existent' && legacySummary.includes('اعتبار'))
+          || (typeFilter === 'non_existent' && legacySummary.includes('اعتبار'))
+        );
+
+        if (!hasMatchingJudgment && !hasLegacyMatch) return false;
+      }
+
       if (!query) return true;
 
       const searchable = [
@@ -247,7 +292,7 @@ export function useJudgmentsData({ formatUiDate }) {
 
       return searchable.includes(query);
     });
-  }, [cases, judgmentsByCaseId, activeFilter, searchQuery]);
+  }, [cases, judgmentsByCaseId, activeFilter, typeFilter, searchQuery, judgmentTypes]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCases.length / pageSize));
   const pagedCases = filteredCases.slice((page - 1) * pageSize, page * pageSize);
@@ -289,6 +334,19 @@ export function useJudgmentsData({ formatUiDate }) {
 
   const filteredTableJudgments = useMemo(() => {
     return judgments.filter((judgment) => {
+      if (activeFilter !== 'reserved' && typeFilter !== 'all') {
+        const typeConfig = judgmentTypes.find((type) => type.value === typeFilter);
+        const filterLabel = typeConfig ? typeConfig.label : typeFilter;
+        if (
+          judgment.judgmentType !== typeFilter
+          && judgment.judgmentCategory !== typeFilter
+          && judgment.judgmentCategory !== filterLabel
+          && !String(judgment.summaryDecision || '').includes(filterLabel)
+        ) {
+          return false;
+        }
+      }
+
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       return [
@@ -305,7 +363,7 @@ export function useJudgmentsData({ formatUiDate }) {
         .toLowerCase()
         .includes(query);
     });
-  }, [judgments, searchQuery]);
+  }, [judgments, activeFilter, typeFilter, searchQuery, judgmentTypes]);
 
   const getTypeConfig = (value) => {
     return judgmentTypes.find((type) => type.value === value)
@@ -335,6 +393,48 @@ export function useJudgmentsData({ formatUiDate }) {
       appealDeadlineDays: Number(getTypeConfig(baseType)?.appealDays || 0),
       isPlaintiff,
     };
+  };
+
+  const startAddJudgment = (caseId) => {
+    const key = String(caseId || '');
+    setFormByCaseId((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setAddingJudgment(key);
+  };
+
+  const startEditJudgment = (caseItem, judgment) => {
+    const key = String(caseItem?.id || judgment?.caseId || '');
+    if (!key || !judgment) return;
+    const judgmentType = judgment.judgmentType || judgment.judgmentCategory || JUDGMENT_TYPE.OTHER;
+    const isPlaintiff = Boolean(caseItem?.flags?.isPlaintiff) || detectIsPlaintiff(caseItem?.roleCapacity);
+
+    setFormByCaseId((prev) => ({
+      ...prev,
+      [key]: {
+        editingJudgmentId: judgment.isLegacy ? '' : judgment.id,
+        editingLegacyJudgment: Boolean(judgment.isLegacy),
+        judgmentDate: judgment.judgmentDate || caseItem?.lastSessionDate || '',
+        judgmentType,
+        summaryDecision: judgment.summaryDecision || '',
+        judgmentCategory: judgment.judgmentCategory || judgmentType,
+        judgmentSummary: judgment.judgmentSummary || '',
+        judgmentPronouncement: judgment.judgmentPronouncement || '',
+        originSessionType: judgment.originSessionType || getDerivedCaseSessionType(caseItem),
+        originSessionDate: judgment.originSessionDate || judgment.judgmentDate || caseItem?.lastSessionDate || '',
+        isFinal: judgment.isFinal !== false,
+        nextAction: judgment.nextAction || '',
+        attachmentUrl: judgment.attachmentUrl || '',
+        notes: judgment.notes || '',
+        executionStatus: judgment.executionStatus || EXECUTION_STATUS.PENDING,
+        appealDeadlineDate: judgment.appealDeadlineDate || '',
+        appealDeadlineDays: Number(judgment.appealDeadlineDays || getTypeConfig(judgmentType)?.appealDays || 0),
+        isPlaintiff,
+      },
+    }));
+    setAddingJudgment(key);
   };
 
   const updateForm = (caseId, patch) => {
@@ -438,7 +538,7 @@ export function useJudgmentsData({ formatUiDate }) {
     const originSessionType = String(form.originSessionType || getDerivedCaseSessionType(caseItem)).trim();
     const originSessionDate = String(form.originSessionDate || caseItem.nextSessionDate || caseItem.lastSessionDate || '').trim();
 
-    await storage.createJudgment(workspaceId, {
+    const judgmentPayload = {
       caseId,
       caseNumber: caseItem.caseNumber || '',
       caseYear: caseItem.caseYear || '',
@@ -463,7 +563,44 @@ export function useJudgmentsData({ formatUiDate }) {
       attachmentUrl: String(form.attachmentUrl || '').trim(),
       notes: String(form.notes || '').trim(),
       nextAction: String(form.nextAction || '').trim(),
-    });
+    };
+
+    if (form.editingLegacyJudgment) {
+      await storage.updateCase(workspaceId, caseId, {
+        judgmentType,
+        judgmentCategory,
+        summaryDecision,
+        judgmentSummary,
+        judgmentPronouncement,
+        lastSessionDate: judgmentDate,
+        sessionResult: summaryDecision || judgmentSummary || judgmentType,
+        status: form.isFinal ? 'judged' : 'reserved_for_judgment',
+        agendaRoute: 'judgments',
+        litigationStage: 'محجوز للحكم',
+      });
+      setAddingJudgment(null);
+      setFormByCaseId((prev) => {
+        const next = { ...prev };
+        delete next[caseId];
+        return next;
+      });
+      await loadJudgments();
+      return;
+    }
+
+    if (form.editingJudgmentId) {
+      await storage.updateJudgment(workspaceId, form.editingJudgmentId, judgmentPayload);
+      setAddingJudgment(null);
+      setFormByCaseId((prev) => {
+        const next = { ...prev };
+        delete next[caseId];
+        return next;
+      });
+      await loadJudgments();
+      return;
+    }
+
+    await storage.createJudgment(workspaceId, judgmentPayload);
 
     await storage.updateCase(workspaceId, caseId, {
       status: form.isFinal ? 'judged' : 'reserved_for_judgment',
@@ -488,6 +625,11 @@ export function useJudgmentsData({ formatUiDate }) {
     }
 
     setAddingJudgment(null);
+    setFormByCaseId((prev) => {
+      const next = { ...prev };
+      delete next[caseId];
+      return next;
+    });
     await loadJudgments();
   };
 
@@ -522,6 +664,7 @@ export function useJudgmentsData({ formatUiDate }) {
     loading,
     error,
     activeFilter,
+    typeFilter,
     searchQuery,
     viewMode,
     addingJudgment,
@@ -536,6 +679,7 @@ export function useJudgmentsData({ formatUiDate }) {
     setJudgmentTypes,
     setShowTypesManager,
     setActiveFilter,
+    setTypeFilter,
     setSearchQuery,
     setViewMode,
     setAddingJudgment,
@@ -550,6 +694,8 @@ export function useJudgmentsData({ formatUiDate }) {
     getTypeConfig,
     persistTypes,
     getFormState,
+    startAddJudgment,
+    startEditJudgment,
     updateForm,
     setRowEdit,
     handleDateClick,

@@ -1,6 +1,7 @@
 ﻿import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CaseAttachmentsTab from '@/pages/Cases/CaseAttachmentsTab.jsx';
+import CaseDocumentsTab from '@/pages/Cases/CaseDocumentsTab.jsx';
 import CaseEditTab from '@/pages/Cases/CaseEditTab.jsx';
 import CaseHeader from '@/pages/Cases/CaseHeader.jsx';
 import CaseInfo from '@/pages/Cases/CaseInfo.jsx';
@@ -25,6 +26,7 @@ const CASE_TABS = [
   { id: 'procedures', label: 'إجراءات الدعوى', icon: '🗂️' },
   { id: 'tasks', label: 'المهام', icon: '✓' },
   { id: 'legal', label: 'التحليل القانوني', icon: '📝' },
+  { id: 'documents', label: 'المستندات', icon: '📄' },
   { id: 'attachments', label: 'أوراق الدعوى', icon: '📎' },
   { id: 'edit', label: 'تعديل', icon: '✏️' },
 ];
@@ -363,76 +365,57 @@ export default function CaseDetails() {
   if (activeTab === 'overview') {
     tabContent = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* 1. TOP PANORAMA: Quick Metrics Dashboard */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          
+          {/* Widget A: Next Session / Status */}
+          <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', borderRadius: '12px', padding: '20px', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: '13px', color: '#1d4ed8', fontWeight: 800, marginBottom: '8px' }}>📅 الجلسة القادمة</div>
+            {caseData?.nextSessionDate ? (
+              <>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#1e3a8a' }}>{formatDisplayDate(caseData.nextSessionDate)}</div>
+                <div style={{ fontSize: '14px', color: '#2563eb', marginTop: '4px', fontWeight: 700 }}>{caseData.nextSessionType || 'غير محدد'}</div>
+              </>
+            ) : (
+               <div style={{ fontSize: '16px', fontWeight: 700, color: '#64748b' }}>لا توجد جلسات قادمة</div>
+            )}
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', alignItems: 'start' }}>
+          {/* Widget B: Latest Judgment / Result */}
+          <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', borderRadius: '12px', padding: '20px', border: '1px solid #bbf7d0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 800, marginBottom: '8px' }}>⚖️ الموقف القانوني (آخر قرار/حكم)</div>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#166534', lineHeight: 1.5 }}>
+              {latestJudgment ? (latestJudgment.decision || latestJudgment.summary || 'حكم مسجل') : (primaryUpcomingSession?.sessionResult || 'لم يصدر قرار بعد')}
+            </div>
+          </div>
 
-          {/* Column 1 (Right): Activity & Pulse */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ margin: '0 0 16px 0', color: 'var(--primary)', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <span>⏱️</span> نبض الدعوى
+          {/* Widget C: File Location */}
+          <div style={{ background: String(caseData.fileLocation).includes('غير موجود') ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '12px', padding: '20px', border: `1px solid ${String(caseData.fileLocation).includes('غير موجود') ? '#fca5a5' : '#e2e8f0'}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: '13px', color: String(caseData.fileLocation).includes('غير موجود') ? '#b91c1c' : '#475569', fontWeight: 800, marginBottom: '8px' }}>📂 مكان الملف الفعلي</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: String(caseData.fileLocation).includes('غير موجود') ? '#dc2626' : '#0f172a' }}>
+              {caseData.fileLocation || 'غير محدد'}
+            </div>
+          </div>
+        </div>
+
+        {/* 2. MAIN SPLIT: Right (Timeline/Work) vs Left (Data/Attachments) */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
+          
+          {/* RIGHT COLUMN: The Case Journey & Legal Work (Wider) */}
+          <div style={{ flex: '2 1 500px', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
+            
+            {/* Extended Timeline */}
+            <div style={{ background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+               <h3 style={{ margin: '0 0 20px 0', color: 'var(--primary)', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+                <span>⏳</span> خريطة سير الدعوى
               </h3>
-              {caseData?.nextSessionDate ? (
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 600, marginBottom: '4px' }}>الجلسة القادمة</div>
-                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#1e3a8a' }}>{formatDisplayDate(caseData.nextSessionDate)}</div>
-                  <div style={{ fontSize: '13px', color: '#2563eb', marginTop: '4px', fontWeight: 600 }}>{caseData.nextSessionType || 'غير محدد'}</div>
-                </div>
-              ) : (
-                 <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>لا توجد جلسات قادمة</div>
-              )}
-
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px' }}>أحدث التطورات:</div>
-              <div style={{ maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
                 <CaseTimeline timelineEvents={timelineEvents} dateDisplayOptions={dateDisplayOptions} />
               </div>
             </div>
-          </div>
 
-          {/* Column 2 (Middle): Core Data */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ margin: '0 0 16px 0', color: 'var(--primary)', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <span>📄</span> البيانات الأساسية
-              </h3>
-              <CaseInfo caseData={caseData} statusLabels={STATUS_LABELS} sensitiveHidden={sensitiveHidden} />
-            </div>
-          </div>
-
-          {/* Column 3 (Left): File & Meta */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ margin: '0 0 16px 0', color: 'var(--primary)', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <span>📁</span> حالة الملف والمرفقات
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                <div style={{ background: String(caseData.fileLocation).includes('غير موجود') ? '#fef2f2' : '#f8fafc', border: `1px solid ${String(caseData.fileLocation).includes('غير موجود') ? '#fca5a5' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ fontSize: '24px' }}>{String(caseData.fileLocation).includes('غير موجود') ? '🚨' : '📂'}</div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>مكان الملف الفعلي</div>
-                    <div style={{ fontSize: '14px', fontWeight: 800, color: String(caseData.fileLocation).includes('غير موجود') ? '#dc2626' : 'var(--text-primary)' }}>
-                      {caseData.fileLocation || 'غير محدد'}
-                    </div>
-                  </div>
-                </div>
-
-                {caseData.attachments?.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>المرفقات ({caseData.attachments.length})</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {caseData.attachments.slice(0, 4).map((att, i) => (
-                        <a key={i} href={att.url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', padding: '8px 10px', background: '#f1f5f9', borderRadius: '6px', color: 'var(--primary)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid #e2e8f0' }}>
-                          📎 {att.title || 'مرفق'}
-                        </a>
-                      ))}
-                      {caseData.attachments.length > 4 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '4px' }}>+ {caseData.attachments.length - 4} مرفقات أخرى</div>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
+            {/* Legal Blocks Section */}
             <CaseLegalBlocksSection
               legalBlocks={legalBlocks}
               blockTypes={blockTypes}
@@ -443,47 +426,53 @@ export default function CaseDetails() {
               updateBlockTypes={updateBlockTypes}
               setShowReportModal={setShowReportModal}
               onAddBlock={() => {
-                const newBlock = {
-                  id: `block_${Date.now()}`,
-                  type: 'custom',
-                  title: 'كتلة جديدة',
-                  content: '',
-                  order: Math.max(...legalBlocks.map(b => b.order), 0) + 1,
-                };
+                const newBlock = { id: `block_${Date.now()}`, type: 'custom', title: 'كتلة جديدة', content: '', order: Math.max(...legalBlocks.map(b => b.order), 0) + 1 };
                 setLegalBlocks([...legalBlocks, newBlock]);
               }}
-              onUpdateBlockTitle={(blockId, value) => {
-                setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, title: value } : b));
-              }}
-              onUpdateBlockType={(blockId, value) => {
-                setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, type: value } : b));
-              }}
-              onMoveBlockUp={(blockId, blockOrder) => {
-                setLegalBlocks(legalBlocks.map(b => {
-                  if (b.id === blockId) return { ...b, order: b.order - 1 };
-                  if (b.order === blockOrder - 1) return { ...b, order: b.order + 1 };
-                  return b;
-                }));
-              }}
-              onMoveBlockDown={(blockId, blockOrder) => {
-                setLegalBlocks(legalBlocks.map(b => {
-                  if (b.id === blockId) return { ...b, order: b.order + 1 };
-                  if (b.order === blockOrder + 1) return { ...b, order: b.order - 1 };
-                  return b;
-                }));
-              }}
-              onDeleteBlock={(blockId) => {
-                setLegalBlocks(legalBlocks.filter(b => b.id !== blockId));
-              }}
-              onUpdateBlockContent={(blockId, value) => {
-                setLegalBlocks(legalBlocks.map(b =>
-                  b.id === blockId ? { ...b, content: value } : b
-                ));
-              }}
+              onUpdateBlockTitle={(blockId, value) => setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, title: value } : b))}
+              onUpdateBlockType={(blockId, value) => setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, type: value } : b))}
+              onMoveBlockUp={(blockId, blockOrder) => setLegalBlocks(legalBlocks.map(b => { if (b.id === blockId) return { ...b, order: b.order - 1 }; if (b.order === blockOrder - 1) return { ...b, order: b.order + 1 }; return b; }))}
+              onMoveBlockDown={(blockId, blockOrder) => setLegalBlocks(legalBlocks.map(b => { if (b.id === blockId) return { ...b, order: b.order + 1 }; if (b.order === blockOrder + 1) return { ...b, order: b.order - 1 }; return b; }))}
+              onDeleteBlock={(blockId) => setLegalBlocks(legalBlocks.filter(b => b.id !== blockId))}
+              onUpdateBlockContent={(blockId, value) => setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, content: value } : b))}
             />
           </div>
 
+          {/* LEFT COLUMN: Meta Data & Attachments (Narrower, Scrollable) */}
+          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
+            
+            {/* Scrollable Basic Data Container */}
+            <div style={{ background: 'white', padding: '0', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+               <h3 style={{ margin: '0', color: 'var(--primary)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', padding: '16px 20px', background: '#f8fafc' }}>
+                <span>📄</span> البيانات الأساسية
+              </h3>
+              <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '20px' }}>
+                <CaseInfo caseData={caseData} statusLabels={STATUS_LABELS} sensitiveHidden={sensitiveHidden} />
+              </div>
+            </div>
+
+            {/* Quick Attachments */}
+            {caseData.attachments?.length > 0 && (
+              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ margin: '0 0 16px 0', color: 'var(--text-primary)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+                  <span>📎</span> أوراق ومرفقات سريعة
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {caseData.attachments.slice(0, 5).map((att, i) => (
+                    <a key={i} href={att.url} target="_blank" rel="noreferrer" style={{ fontSize: '13px', padding: '10px 12px', background: '#f1f5f9', borderRadius: '8px', color: 'var(--primary)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid #e2e8f0', fontWeight: 600 }}>
+                      {att.title || 'مرفق بدون اسم'}
+                    </a>
+                  ))}
+                  {caseData.attachments.length > 5 && (
+                    <div style={{ fontSize: '12px', textAlign: 'center', color: 'var(--text-muted)', marginTop: '4px' }}>+ {caseData.attachments.length - 5} مرفقات أخرى (شاهد التبويب)</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
+
       </div>
     );
   } else if (activeTab === 'sessions') {
@@ -614,6 +603,13 @@ export default function CaseDetails() {
           setShowAttachmentForm(true);
         }}
         onDeleteAttachment={handleDeleteAttachment}
+      />
+    );
+  } else if (activeTab === 'documents') {
+    tabContent = (
+      <CaseDocumentsTab
+        caseData={caseData}
+        dateDisplayOptions={dateDisplayOptions}
       />
     );
   } else if (activeTab === 'edit') {

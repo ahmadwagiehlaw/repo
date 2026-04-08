@@ -18,6 +18,7 @@ export default function Judgments() {
     loading,
     error,
     activeFilter,
+    typeFilter,
     searchQuery,
     viewMode,
     addingJudgment,
@@ -30,6 +31,7 @@ export default function Judgments() {
     casesContextLoading,
     setShowTypesManager,
     setActiveFilter,
+    setTypeFilter,
     setSearchQuery,
     setViewMode,
     setAddingJudgment,
@@ -41,6 +43,8 @@ export default function Judgments() {
     getTypeConfig,
     persistTypes,
     getFormState,
+    startAddJudgment,
+    startEditJudgment,
     updateForm,
     setRowEdit,
     handleDateClick,
@@ -94,62 +98,169 @@ export default function Judgments() {
         getDaysLabel={getUrgentJudgmentDaysLabel}
       />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {[
-            { id: 'all', label: 'الكل' },
-            { id: 'reserved', label: 'محجوزة للحكم' },
-            { id: 'judged', label: 'محكوم فيها' },
-            { id: 'plaintiff_urgent', label: '⚠️ مواعيد عاجلة' },
-          ].map((filter) => (
+      {/* Unified Control Dashboard */}
+      <div
+        style={{
+          background: 'var(--bg-page)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border)',
+          marginBottom: '24px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+        }}
+      >
+        {/* Top Row: Main Filters & Search/Actions */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '16px',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px',
+            borderBottom: activeFilter !== 'reserved' ? '1px solid var(--border-light)' : 'none',
+          }}
+        >
+          {/* Main Filters */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: 'الكل' },
+              { id: 'reserved', label: 'محجوزة للحكم' },
+              { id: 'judged', label: 'محكوم فيها' },
+              { id: 'plaintiff_urgent', label: '⚠️ مواعيد عاجلة' },
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={`filter-chip ${activeFilter === filter.id ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveFilter(filter.id);
+                  if (filter.id === 'reserved') {
+                    setTypeFilter('all');
+                  }
+                  setPage(1);
+                }}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search & Action Toggles */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              className="form-input"
+              placeholder="بحث برقم الدعوى أو الخصوم..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '260px', fontSize: '13px' }}
+            />
             <button
-              key={filter.id}
               type="button"
-              className={`filter-chip ${activeFilter === filter.id ? 'active' : ''}`}
-              onClick={() => {
-                setActiveFilter(filter.id);
-                setPage(1);
-              }}
+              className="btn-secondary"
+              style={{ fontSize: '13px', padding: '8px 12px' }}
+              onClick={() => setShowTypesManager(true)}
+              title="إدارة تصنيفات الأحكام"
             >
-              {filter.label}
+              ⚙️ التصنيفات
             </button>
-          ))}
+            <div style={{ display: 'flex', background: 'var(--bg-body)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                style={{
+                  fontSize: '13px',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: viewMode === 'cards' ? 'var(--primary)' : 'transparent',
+                  color: viewMode === 'cards' ? 'white' : 'var(--text-secondary)',
+                  fontWeight: viewMode === 'cards' ? 700 : 500,
+                  fontFamily: 'Cairo',
+                }}
+                onClick={() => setViewMode('cards')}
+              >
+                كروت
+              </button>
+              <button
+                type="button"
+                style={{
+                  fontSize: '13px',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: viewMode === 'table' ? 'var(--primary)' : 'transparent',
+                  color: viewMode === 'table' ? 'white' : 'var(--text-secondary)',
+                  fontWeight: viewMode === 'table' ? 700 : 500,
+                  fontFamily: 'Cairo',
+                }}
+                onClick={() => setViewMode('table')}
+              >
+                جدول
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            className="form-input"
-            placeholder="بحث..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 220, fontSize: 13 }}
-          />
-          <button
-            type="button"
-            className="btn-secondary"
-            style={{ fontSize: 12, padding: '6px 10px' }}
-            onClick={() => setShowTypesManager(true)}
-            title="إدارة تصنيفات الأحكام"
-          >
-            التصنيفات
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'cards' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 10px' }}
-            onClick={() => setViewMode('cards')}
-          >
-            كرود
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'table' ? 'btn-primary' : 'btn-secondary'}
-            style={{ fontSize: 12, padding: '6px 10px' }}
-            onClick={() => setViewMode('table')}
-          >
-            جدول
-          </button>
-        </div>
+        {/* Bottom Row: Secondary Type Filters */}
+        {activeFilter !== 'reserved' && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '12px 16px', background: 'var(--bg-body)' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter('all');
+                setPage(1);
+              }}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                border: typeFilter === 'all' ? '1px solid var(--primary)' : '1px solid var(--border)',
+                background: typeFilter === 'all' ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'white',
+                color: typeFilter === 'all' ? 'var(--primary)' : 'var(--text-secondary)',
+                fontWeight: typeFilter === 'all' ? 700 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'Cairo',
+              }}
+            >
+              جميع التصنيفات
+            </button>
+            {judgmentTypes.map((type) => {
+              const isActive = typeFilter === type.value;
+              return (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => {
+                    setTypeFilter(type.value);
+                    setPage(1);
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: isActive ? `${type.color}15` : 'white',
+                    border: `1px solid ${isActive ? type.color : 'var(--border)'}`,
+                    color: isActive ? type.color : 'var(--text-secondary)',
+                    fontWeight: isActive ? 700 : 500,
+                    fontFamily: 'Cairo',
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: type.color }} />
+                  {type.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {showTypesManager && (
@@ -308,7 +419,8 @@ export default function Judgments() {
         nextActionOptions={nextActionOptions}
         executionStatusLabels={executionStatusLabels}
         onOpenCase={openCasePanel}
-        onStartAddJudgment={setAddingJudgment}
+        onStartAddJudgment={startAddJudgment}
+        onEditJudgment={startEditJudgment}
         onCancelAddJudgment={() => setAddingJudgment(null)}
         onDateClick={handleDateClick}
         onOpenAttachment={(url) => window.open(url, '_blank')}

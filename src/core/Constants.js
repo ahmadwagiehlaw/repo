@@ -575,7 +575,7 @@ export const JUDGMENT_TYPE = {
 export const JUDGMENT_TYPE_LABELS = {
   [JUDGMENT_TYPE.FOR_US]:              'لصالحنا',
   [JUDGMENT_TYPE.AGAINST_US]:          'ضدنا',
-  [JUDGMENT_TYPE.DEEMED_NON_EXISTENT]: 'اعتبر كأن لم يكن',
+  [JUDGMENT_TYPE.DEEMED_NON_EXISTENT]: 'اعتبار كأن لم يكن',
   [JUDGMENT_TYPE.PARTIAL]:             'جزئي',
   [JUDGMENT_TYPE.OTHER]:               'أخرى',
 };

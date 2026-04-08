@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useCases } from '@/contexts/CaseContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import storage from '@/data/Storage.js';
@@ -859,6 +860,7 @@ const S = {
   saveRow: {
     display: 'flex',
     gap: '8px',
+    flexWrap: 'wrap',
     justifyContent: 'flex-start',
     alignItems: 'center',
   },
@@ -973,6 +975,8 @@ const S = {
 /* ─── Component ──────────────────────────────────────────── */
 
 export default function Templates() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const editorRef = useRef(null);
   const editorShellRef = useRef(null);
   const pasteEditorRef = useRef(null);
@@ -1002,6 +1006,7 @@ export default function Templates() {
   const [newTypeIcon, setNewTypeIcon] = useState('📄');
   const [templateContent, setTemplateContent] = useState('');
   const [selectedCaseId, setSelectedCaseId] = useState('');
+  const [caseDocumentDraft, setCaseDocumentDraft] = useState(null);
   const [previewHtml, setPreviewHtml] = useState('');
   const [sidebarFilter, setSidebarFilter] = useState('all');
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -1229,6 +1234,33 @@ export default function Templates() {
     setTimeout(() => setSuccessMsg(''), 2500);
   };
 
+  useEffect(() => {
+    const incomingDoc = location.state?.caseDocument || null;
+    const incomingCaseId = String(location.state?.selectedCaseId || incomingDoc?.caseId || '').trim();
+    if (!incomingDoc && !incomingCaseId) return;
+
+    if (incomingDoc) {
+      setSelectedTemplateId('');
+      setTemplateName(String(incomingDoc?.title || '').trim() || 'مستند قضية');
+      setTemplateType(String(incomingDoc?.type || '').trim() || defaultTemplateTypeValue);
+      setTemplateContent(String(incomingDoc?.htmlContent || ''));
+      setPreviewHtml(String(incomingDoc?.htmlContent || ''));
+      setSelectedCaseId(incomingCaseId);
+      setCaseDocumentDraft({
+        ...incomingDoc,
+        caseId: incomingCaseId || String(incomingDoc?.caseId || '').trim(),
+      });
+      setIsDirty(false);
+      setEditorViewMode('edit');
+      flashSuccess('تم تحميل مستند القضية داخل المحرر');
+    } else if (incomingCaseId) {
+      setSelectedCaseId(incomingCaseId);
+      flashSuccess('تم ربط القضية بالمحرر');
+    }
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [defaultTemplateTypeValue, location.pathname, location.state, navigate]);
+
   const resetEditor = () => {
     clearSelectedImage();
     setImageResizeHandle(null);
@@ -1236,6 +1268,7 @@ export default function Templates() {
     setTemplateName('');
     setTemplateType(defaultTemplateTypeValue);
     setTemplateContent('');
+    setCaseDocumentDraft(null);
     setPreviewHtml('');
     setIsDirty(false);
     setEditorViewMode('edit');
@@ -1260,6 +1293,7 @@ export default function Templates() {
     }
     clearSelectedImage();
     setImageResizeHandle(null);
+    setCaseDocumentDraft(null);
     setSelectedTemplateId(tpl?.id || '');
     setTemplateName(tpl?.name || '');
     setTemplateType(tpl?.type || defaultTemplateTypeValue);
@@ -1272,6 +1306,7 @@ export default function Templates() {
   const duplicateTemplate = (tpl) => {
     clearSelectedImage();
     setImageResizeHandle(null);
+    setCaseDocumentDraft(null);
     setSelectedTemplateId('');
     setTemplateName((tpl?.name || '') + ' — نسخة');
     setTemplateType(tpl?.type || defaultTemplateTypeValue);
@@ -1321,6 +1356,63 @@ export default function Templates() {
       setTemplateName(`${baseName} — نسخة`);
       setIsDirty(false);
       flashSuccess('تم حفظ نسخة جديدة ✅');
+    } catch (e) {
+      setError(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveToCaseFile = async () => {
+    if (!workspaceId) return;
+
+    const resolvedCaseId = String(selectedCaseId || caseDocumentDraft?.caseId || '').trim();
+    if (!resolvedCaseId) {
+      alert('يرجى اختيار القضية أولاً');
+      return;
+    }
+
+    const editorHtml = String(editorRef.current?.innerHTML || templateContent || '').trim();
+    if (!editorHtml) {
+      alert('لا يوجد محتوى لحفظه في ملف القضية');
+      return;
+    }
+
+    const caseRecord = (Array.isArray(cases) ? cases : []).find((item) => String(item?.id || '') === resolvedCaseId) || selectedCase || {};
+    const suggestedTitle = String(caseDocumentDraft?.title || templateName || 'مستند قضية').trim() || 'مستند قضية';
+    const enteredTitle = await promptDialog('عنوان المستند', suggestedTitle, {
+      title: caseDocumentDraft?.id ? 'تحديث مستند القضية' : 'حفظ مستند في ملف القضية',
+      confirmLabel: caseDocumentDraft?.id ? 'تحديث' : 'حفظ',
+      cancelLabel: 'إلغاء',
+      placeholder: 'مثال: مذكرة دفاع',
+    });
+
+    if (enteredTitle === null) return;
+
+    const finalTitle = String(enteredTitle || '').trim();
+    if (!finalTitle) {
+      alert('يرجى إدخال عنوان واضح للمستند');
+      return;
+    }
+
+    const htmlContent = parseTemplate(editorHtml, caseRecord || {});
+
+    setSaving(true);
+    try {
+      const saved = await storage.saveCaseDocument(workspaceId, resolvedCaseId, {
+        id: caseDocumentDraft?.caseId === resolvedCaseId ? caseDocumentDraft?.id : undefined,
+        createdAt: caseDocumentDraft?.caseId === resolvedCaseId ? caseDocumentDraft?.createdAt : undefined,
+        title: finalTitle,
+        htmlContent,
+        type: templateType,
+        sourceTemplateId: selectedTemplateId || '',
+        sourceTemplateName: String(templateName || '').trim(),
+      });
+
+      setCaseDocumentDraft({ ...saved, caseId: resolvedCaseId });
+      setSelectedCaseId(resolvedCaseId);
+      setPreviewHtml(htmlContent);
+      flashSuccess(caseDocumentDraft?.id ? 'تم تحديث المستند داخل ملف القضية ✅' : 'تم حفظ المستند داخل ملف القضية ✅');
     } catch (e) {
       setError(e);
     } finally {
@@ -1851,6 +1943,31 @@ export default function Templates() {
     image.style.height = 'auto';
     image.style.display = 'block';
     image.style.margin = '12px auto';
+    syncEditorHtml();
+    setSelectedImage(image);
+    refreshImageResizeHandle();
+  };
+
+  const applyImageAlignment = (alignment) => {
+    const image = getSelectedImage();
+    if (!image) {
+      alert('حدد صورة داخل المحرر أولًا');
+      return;
+    }
+
+    const alignments = {
+      right: '12px 0 12px auto',
+      center: '12px auto',
+      left: '12px auto 12px 0',
+    };
+
+    const nextMargin = alignments[alignment];
+    if (!nextMargin) return;
+
+    image.style.display = 'block';
+    image.style.margin = nextMargin;
+    image.style.maxWidth = '100%';
+    image.style.height = 'auto';
     syncEditorHtml();
     setSelectedImage(image);
     refreshImageResizeHandle();
@@ -2640,6 +2757,9 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
               <button type="button" style={S.toolbarBtn} onClick={() => execCmd('justifyLeft')} title="محاذاة يسار">
                 ◀≡
               </button>
+              <button type="button" style={S.toolbarBtn} onClick={() => execCmd('justifyFull')} title="ضبط كامل">
+                ☰
+              </button>
               <div style={S.toolbarDivider} />
               <button type="button" style={S.toolbarBtn} onClick={() => execCmd('formatBlock', '<h2>')} title="عنوان رئيسي">
                 H2
@@ -2691,6 +2811,15 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
               </button>
               <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImagePreset('full')} title="عرض كامل للصورة" disabled={!selectedImageToken}>
                 كامل
+              </button>
+              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImageAlignment('right')} title="محاذاة الصورة يمين" disabled={!selectedImageToken}>
+                يمين
+              </button>
+              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImageAlignment('center')} title="توسيط الصورة" disabled={!selectedImageToken}>
+                وسط
+              </button>
+              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImageAlignment('left')} title="محاذاة الصورة يسار" disabled={!selectedImageToken}>
+                يسار
               </button>
               {selectedImageToken && (
                 <span style={S.imageHint}>تم تحديد صورة ويمكن تعديل حجمها الآن</span>
@@ -2962,6 +3091,24 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
 
             {/* Save Row */}
             <div style={S.saveRow}>
+              <select
+                value={selectedCaseId}
+                onChange={(e) => setSelectedCaseId(e.target.value)}
+                style={{ ...S.select, minWidth: '260px', fontSize: '13px', padding: '8px 12px' }}
+                title="اختر القضية المرتبط بها المستند"
+              >
+                <option value="">اختر قضية للحفظ داخل ملفها...</option>
+                {(Array.isArray(cases) ? cases : []).map((c) => {
+                  const caseNumber = [String(c?.caseNumber || '').trim(), String(c?.caseYear || '').trim()].filter(Boolean).join('/');
+                  const parties = [String(c?.plaintiffName || '').trim(), String(c?.defendantName || '').trim()].filter(Boolean).join(' ضد ');
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {[caseNumber, parties].filter(Boolean).join(' — ') || c.id}
+                    </option>
+                  );
+                })}
+              </select>
+
               {isEditorFullscreen && (
                 <button
                   type="button"
@@ -2993,6 +3140,15 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
               )}
               <button
                 type="button"
+                style={{ ...S.commandBtnAccent, opacity: saving ? 0.7 : 1 }}
+                onClick={handleSaveToCaseFile}
+                disabled={saving}
+                title="يحفظ النسخة الحالية داخل ملف القضية المختارة"
+              >
+                💾 حفظ في ملف القضية
+              </button>
+              <button
+                type="button"
                 style={{ ...S.commandBtnPrimary, opacity: saving ? 0.7 : 1 }}
                 onClick={() => handleSave(false)}
                 disabled={saving}
@@ -3007,6 +3163,11 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
               {!isDirty && selectedTemplateId && (
                 <span style={{ ...S.autoSaveIndicator, color: '#16a34a' }}>
                   ✓ محفوظ
+                </span>
+              )}
+              {caseDocumentDraft?.id && (
+                <span style={{ ...S.autoSaveIndicator, color: '#0369a1', background: '#e0f2fe', borderColor: '#bae6fd' }}>
+                  مرتبط بمستند قضية محفوظ
                 </span>
               )}
             </div>

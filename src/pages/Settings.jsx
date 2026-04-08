@@ -204,6 +204,14 @@ const REMINDER_TARGET_FIELD_OPTIONS = [
   { value: 'workflowStage', label: 'مرحلة سير العمل' },
 ];
 
+const CUSTOM_RULE_ROUTE_OPTIONS = [
+  { value: 'sessions', label: 'Sessions / الجلسات' },
+  { value: 'judgments', label: 'Judgments / الأحكام' },
+  { value: 'chamber', label: 'Chamber / الدائرة' },
+  { value: 'referred', label: 'Referred / الإحالة' },
+  { value: 'archive', label: 'Archive / الأرشيف' },
+];
+
 function getCustomFieldReminderOptions(customFieldDefs = []) {
   return (Array.isArray(customFieldDefs) ? customFieldDefs : [])
     .map((field) => {
@@ -215,6 +223,90 @@ function getCustomFieldReminderOptions(customFieldDefs = []) {
       };
     })
     .filter(Boolean);
+}
+
+function createEmptyCustomRule() {
+  return {
+    id: `crr_${Date.now()}`,
+    condition1: {
+      field: 'plaintiffName',
+      keywords: [],
+    },
+    condition2: {
+      field: 'roleCapacity',
+      keywords: [],
+      enabled: false,
+    },
+    actions: {
+      createTask: true,
+      taskMessage: '',
+      updateField: false,
+      targetField: 'status',
+      newValue: '',
+      doRollover: false,
+      targetRoute: 'sessions',
+    },
+  };
+}
+
+function normalizeCustomRule(rule, allowedFields, fallbackId = '') {
+  const legacyTargetField = String(rule?.targetField || '').trim();
+  const condition1Field = String(rule?.condition1?.field || legacyTargetField || 'plaintiffName').trim();
+  const condition2Field = String(rule?.condition2?.field || 'roleCapacity').trim();
+  const actionTargetField = String(rule?.actions?.targetField || 'status').trim();
+
+  const condition1Keywords = (Array.isArray(rule?.condition1?.keywords)
+    ? rule.condition1.keywords
+    : Array.isArray(rule?.triggerKeywords)
+      ? rule.triggerKeywords
+      : splitKeywords(rule?.condition1?.keywords || rule?.triggerKeywords)
+  )
+    .map((keyword) => String(keyword || '').trim())
+    .filter(Boolean);
+
+  const condition2Keywords = (Array.isArray(rule?.condition2?.keywords)
+    ? rule.condition2.keywords
+    : splitKeywords(rule?.condition2?.keywords)
+  )
+    .map((keyword) => String(keyword || '').trim())
+    .filter(Boolean);
+
+  const actions = rule?.actions || {};
+  const createTask = Boolean(actions.createTask ?? rule?.reminderMessage);
+  const updateField = Boolean(actions.updateField);
+  const doRollover = Boolean(actions.doRollover);
+  const taskMessage = String(actions.taskMessage ?? rule?.reminderMessage ?? '').trim();
+  const newValue = String(actions.newValue ?? '').trim();
+  const targetRoute = CUSTOM_RULE_ROUTE_OPTIONS.some((option) => option.value === actions.targetRoute)
+    ? actions.targetRoute
+    : 'sessions';
+
+  if (!condition1Keywords.length) return null;
+  if (createTask && !taskMessage) return null;
+  if (updateField && (!allowedFields.has(actionTargetField) || !newValue)) return null;
+  if (!createTask && !updateField && !doRollover) return null;
+
+  return {
+    id: String(rule?.id || fallbackId || `crr_${Date.now()}`).trim(),
+    condition1: {
+      field: allowedFields.has(condition1Field) ? condition1Field : 'plaintiffName',
+      keywords: condition1Keywords,
+    },
+    condition2: {
+      field: allowedFields.has(condition2Field) ? condition2Field : 'roleCapacity',
+      keywords: condition2Keywords,
+      enabled: Boolean(rule?.condition2?.enabled) && condition2Keywords.length > 0,
+    },
+    actions: {
+      createTask,
+      taskMessage,
+      updateField,
+      targetField: allowedFields.has(actionTargetField) ? actionTargetField : 'status',
+      newValue,
+      doRollover,
+      targetRoute,
+    },
+  };
 }
 
 function normalizeAutomationSettings(settings = {}, customFieldDefs = []) {
@@ -244,27 +336,7 @@ function normalizeAutomationSettings(settings = {}, customFieldDefs = []) {
     ...customReminderTargetFields.map((option) => option.value),
   ]);
   const customReminderRules = (Array.isArray(settings.customReminderRules) ? settings.customReminderRules : [])
-    .map((rule) => {
-      const targetField = allowedFields.has(String(rule?.targetField || '').trim())
-        ? String(rule.targetField).trim()
-        : 'plaintiffName';
-      const triggerKeywords = (Array.isArray(rule?.triggerKeywords)
-        ? rule.triggerKeywords
-        : splitKeywords(rule?.triggerKeywords)
-      )
-        .map((keyword) => String(keyword || '').trim())
-        .filter(Boolean);
-      const reminderMessage = String(rule?.reminderMessage || '').trim();
-
-      if (!triggerKeywords.length || !reminderMessage) return null;
-
-      return {
-        id: String(rule?.id || `crr_${Date.now()}`).trim(),
-        targetField,
-        triggerKeywords,
-        reminderMessage,
-      };
-    })
+    .map((rule, index) => normalizeCustomRule(rule, allowedFields, `crr_${index}_${Date.now()}`))
     .filter(Boolean);
 
   return {
@@ -712,12 +784,7 @@ export default function Settings() {
       ...prev,
       customReminderRules: [
         ...(Array.isArray(prev.customReminderRules) ? prev.customReminderRules : []),
-        {
-          id: `crr_${Date.now()}`,
-          targetField: 'plaintiffName',
-          triggerKeywords: '',
-          reminderMessage: '',
-        },
+        createEmptyCustomRule(),
       ],
     }));
   }
@@ -1234,71 +1301,208 @@ export default function Settings() {
                     key={rule.id || index}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '170px 1fr 1fr auto',
-                      gap: 8,
-                      alignItems: 'start',
-                      padding: 10,
+                      gap: 12,
+                      padding: 12,
                       border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-sm)',
+                      borderRadius: 'var(--radius-md)',
                       background: '#fff',
                     }}
                   >
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">الحقل المستهدف</label>
-                      <select
-                        className="form-input"
-                        value={rule.targetField || 'plaintiffName'}
-                        onChange={(e) => updateCustomReminderRule(index, { targetField: e.target.value })}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)' }}>
+                          قاعدة #{index + 1}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          نفّذ الأفعال عند تحقق كل الشروط.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomReminderRule(index)}
                         disabled={!canManageWorkspaceSettings}
+                        style={{
+                          background: '#fff5f5',
+                          border: '1px solid #fecaca',
+                          borderRadius: 999,
+                          cursor: canManageWorkspaceSettings ? 'pointer' : 'not-allowed',
+                          color: '#b91c1c',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          padding: '4px 10px',
+                        }}
+                        title="حذف القاعدة"
                       >
-                        {rule.targetField && !reminderTargetFieldOptions.some((option) => option.value === rule.targetField) ? (
-                          <option value={rule.targetField}>{rule.targetField}</option>
-                        ) : null}
-                        {reminderTargetFieldOptions.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
+                        حذف
+                      </button>
                     </div>
 
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">الكلمات المفتاحية</label>
-                      <input
-                        className="form-input"
-                        value={Array.isArray(rule.triggerKeywords) ? rule.triggerKeywords.join(', ') : (rule.triggerKeywords || '')}
-                        onChange={(e) => updateCustomReminderRule(index, { triggerKeywords: e.target.value })}
-                        placeholder="مثال: خبراء, إعلان, تنفيذ"
-                        disabled={!canManageWorkspaceSettings}
-                      />
+                    <div style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 'var(--radius-sm)', background: 'var(--bg-page)' }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-secondary)' }}>الشروط</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">الحقل الأساسي</label>
+                          <select
+                            className="form-input"
+                            value={rule.condition1?.field || rule.targetField || 'plaintiffName'}
+                            onChange={(e) => updateCustomReminderRule(index, {
+                              condition1: { ...(rule.condition1 || {}), field: e.target.value },
+                            })}
+                            disabled={!canManageWorkspaceSettings}
+                          >
+                            {reminderTargetFieldOptions.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">كلمات الشرط الأساسي</label>
+                          <input
+                            className="form-input"
+                            value={Array.isArray(rule.condition1?.keywords) ? rule.condition1.keywords.join(', ') : (Array.isArray(rule.triggerKeywords) ? rule.triggerKeywords.join(', ') : (rule.triggerKeywords || ''))}
+                            onChange={(e) => updateCustomReminderRule(index, {
+                              condition1: { ...(rule.condition1 || {}), keywords: splitKeywords(e.target.value) },
+                            })}
+                            placeholder="مثال: خبراء, إعلان, تنفيذ"
+                            disabled={!canManageWorkspaceSettings}
+                          />
+                        </div>
+                      </div>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(rule.condition2?.enabled)}
+                          onChange={(e) => updateCustomReminderRule(index, {
+                            condition2: { ...(rule.condition2 || {}), enabled: e.target.checked },
+                          })}
+                          disabled={!canManageWorkspaceSettings}
+                        />
+                        و أيضاً: لا تنفذ إلا إذا تحقق شرط ثانٍ
+                      </label>
+
+                      {rule.condition2?.enabled && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">حقل الشرط الثاني</label>
+                            <select
+                              className="form-input"
+                              value={rule.condition2?.field || 'roleCapacity'}
+                              onChange={(e) => updateCustomReminderRule(index, {
+                                condition2: { ...(rule.condition2 || {}), field: e.target.value },
+                              })}
+                              disabled={!canManageWorkspaceSettings}
+                            >
+                              {reminderTargetFieldOptions.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">كلمات الشرط الثاني</label>
+                            <input
+                              className="form-input"
+                              value={Array.isArray(rule.condition2?.keywords) ? rule.condition2.keywords.join(', ') : ''}
+                              onChange={(e) => updateCustomReminderRule(index, {
+                                condition2: { ...(rule.condition2 || {}), keywords: splitKeywords(e.target.value) },
+                              })}
+                              placeholder="مثال: مدعين / طاعنين"
+                              disabled={!canManageWorkspaceSettings}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">نص التذكير</label>
-                      <input
-                        className="form-input"
-                        value={rule.reminderMessage || ''}
-                        onChange={(e) => updateCustomReminderRule(index, { reminderMessage: e.target.value })}
-                        placeholder="نص المهمة أو التنبيه"
-                        disabled={!canManageWorkspaceSettings}
-                      />
-                    </div>
+                    <div style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border)' }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-secondary)' }}>الأفعال</div>
 
-                    <button
-                      type="button"
-                      onClick={() => removeCustomReminderRule(index)}
-                      disabled={!canManageWorkspaceSettings}
-                      style={{
-                        alignSelf: 'end',
-                        background: 'none',
-                        border: 'none',
-                        cursor: canManageWorkspaceSettings ? 'pointer' : 'not-allowed',
-                        color: 'var(--danger)',
-                        fontSize: 16,
-                        padding: '8px 10px',
-                      }}
-                      title="حذف القاعدة"
-                    >
-                      ✕
-                    </button>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(rule.actions?.createTask ?? rule.reminderMessage)}
+                          onChange={(e) => updateCustomReminderRule(index, {
+                            actions: { ...(rule.actions || {}), createTask: e.target.checked },
+                          })}
+                          disabled={!canManageWorkspaceSettings}
+                        />
+                        إنشاء مهمة
+                      </label>
+                      {(rule.actions?.createTask ?? rule.reminderMessage) && (
+                        <input
+                          className="form-input"
+                          value={rule.actions?.taskMessage ?? rule.reminderMessage ?? ''}
+                          onChange={(e) => updateCustomReminderRule(index, {
+                            actions: { ...(rule.actions || {}), taskMessage: e.target.value },
+                          })}
+                          placeholder="نص المهمة"
+                          disabled={!canManageWorkspaceSettings}
+                        />
+                      )}
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(rule.actions?.updateField)}
+                          onChange={(e) => updateCustomReminderRule(index, {
+                            actions: { ...(rule.actions || {}), updateField: e.target.checked },
+                          })}
+                          disabled={!canManageWorkspaceSettings}
+                        />
+                        تحديث حقل
+                      </label>
+                      {rule.actions?.updateField && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
+                          <select
+                            className="form-input"
+                            value={rule.actions?.targetField || 'status'}
+                            onChange={(e) => updateCustomReminderRule(index, {
+                              actions: { ...(rule.actions || {}), targetField: e.target.value },
+                            })}
+                            disabled={!canManageWorkspaceSettings}
+                          >
+                            {reminderTargetFieldOptions.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            className="form-input"
+                            value={rule.actions?.newValue || ''}
+                            onChange={(e) => updateCustomReminderRule(index, {
+                              actions: { ...(rule.actions || {}), newValue: e.target.value },
+                            })}
+                            placeholder="القيمة الجديدة"
+                            disabled={!canManageWorkspaceSettings}
+                          />
+                        </div>
+                      )}
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(rule.actions?.doRollover)}
+                          onChange={(e) => updateCustomReminderRule(index, {
+                            actions: { ...(rule.actions || {}), doRollover: e.target.checked },
+                          })}
+                          disabled={!canManageWorkspaceSettings}
+                        />
+                        Route Rollover / ترحيل المسار
+                      </label>
+                      {rule.actions?.doRollover && (
+                        <select
+                          className="form-input"
+                          value={rule.actions?.targetRoute || 'sessions'}
+                          onChange={(e) => updateCustomReminderRule(index, {
+                            actions: { ...(rule.actions || {}), targetRoute: e.target.value },
+                          })}
+                          disabled={!canManageWorkspaceSettings}
+                        >
+                          {CUSTOM_RULE_ROUTE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

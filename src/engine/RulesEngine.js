@@ -158,20 +158,91 @@ function getCustomReminderRuleId(rule, index) {
   const explicitId = String(rule?.id || '').trim();
   if (explicitId) return explicitId;
 
-  const keywords = Array.isArray(rule?.triggerKeywords)
-    ? rule.triggerKeywords
-    : String(rule?.triggerKeywords || '').split(/[,\u060C]/);
+  const condition1 = getCustomReminderCondition(rule, 'condition1');
 
   return [
     index,
-    rule?.targetField || '',
-    keywords.map((keyword) => String(keyword || '').trim().toLowerCase()).filter(Boolean).sort().join(','),
-    rule?.reminderMessage || ''
+    condition1.field,
+    condition1.keywords.map((keyword) => String(keyword || '').trim().toLowerCase()).filter(Boolean).sort().join(','),
+    getCustomReminderActions(rule).taskMessage
   ].join('|');
 }
 
 function getCustomReminderTaskId(caseId, rule, index) {
   return makeStableId('task', `dynamic-reminder-${caseId}-${getCustomReminderRuleId(rule, index)}`);
+}
+
+function getCustomReminderKeywords(value) {
+  return (Array.isArray(value) ? value : String(value || '').split(/[,\u060C]/))
+    .map((keyword) => String(keyword || '').trim())
+    .filter(Boolean);
+}
+
+function getCustomReminderCondition(rule, key) {
+  const source = rule?.[key] || {};
+  const legacyField = key === 'condition1' ? rule?.targetField : '';
+  const legacyKeywords = key === 'condition1' ? rule?.triggerKeywords : [];
+
+  return {
+    field: String(source.field || legacyField || (key === 'condition2' ? 'roleCapacity' : 'plaintiffName')).trim(),
+    keywords: getCustomReminderKeywords(source.keywords ?? legacyKeywords),
+    enabled: key === 'condition1' ? true : Boolean(source.enabled),
+  };
+}
+
+function getCustomReminderActions(rule) {
+  const actions = rule?.actions || {};
+  const taskMessage = String(actions.taskMessage ?? rule?.reminderMessage ?? '').trim();
+
+  return {
+    createTask: Boolean(actions.createTask ?? taskMessage),
+    taskMessage,
+    updateField: Boolean(actions.updateField),
+    targetField: String(actions.targetField || '').trim(),
+    newValue: String(actions.newValue || '').trim(),
+    doRollover: Boolean(actions.doRollover),
+    targetRoute: String(actions.targetRoute || '').trim(),
+  };
+}
+
+function matchesCustomReminderCondition(caseData, condition) {
+  const normalizedKeywords = getCustomReminderKeywords(condition.keywords)
+    .map((keyword) => keyword.toLowerCase())
+    .filter(Boolean);
+  if (!condition.field || !normalizedKeywords.length) return false;
+  const targetText = String(readCasePath(caseData, condition.field) || '').toLowerCase();
+  return normalizedKeywords.some((keyword) => targetText.includes(keyword));
+}
+
+function applyCustomReminderFieldUpdate(updates, caseData, field, value) {
+  if (!field) return;
+  if (field.startsWith('customFields.')) {
+    const customFieldKey = field.split('.').slice(1).join('.').trim();
+    if (!customFieldKey || ['__proto__', 'prototype', 'constructor'].includes(customFieldKey)) return;
+    updates.customFields = {
+      ...(caseData?.customFields || {}),
+      ...(updates.customFields || {}),
+      [customFieldKey]: value,
+    };
+    return;
+  }
+  updates[field] = value;
+}
+
+function getCustomReminderRoutePatch(targetRoute) {
+  switch (targetRoute) {
+    case 'judgments':
+      return { agendaRoute: 'judgments', status: 'reserved_for_judgment' };
+    case 'chamber':
+      return { agendaRoute: 'chamber', status: 'under_review' };
+    case 'referred':
+      return { agendaRoute: 'referred', status: 'under_review' };
+    case 'archive':
+      return { agendaRoute: 'archive', status: 'archived' };
+    case 'sessions':
+    default:
+      return { agendaRoute: 'sessions', status: 'active' };
+  }
 }
 
 function isStruckOutStatus(caseData, settings) {
@@ -1564,50 +1635,69 @@ function buildRuleCatalog(settings) {
             .map((id) => `customFields.${id}`)
         ]);
         const rules = settings.customReminderRules || context?.settings?.customReminderRules || [];
+        const updates = {};
         const tasks = [];
         const hits = [];
         const today = normalizeDate(new Date().toISOString());
 
         rules.forEach((rule, index) => {
-          const targetField = String(rule?.targetField || '').trim();
-          if (!allowedFields.has(targetField)) return;
+          const condition1 = getCustomReminderCondition(rule, 'condition1');
+          const condition2 = getCustomReminderCondition(rule, 'condition2');
+          const actions = getCustomReminderActions(rule);
+          const generatedTaskIds = [];
+          const ruleId = getCustomReminderRuleId(rule, index);
 
-          const keywords = Array.isArray(rule?.triggerKeywords)
-            ? rule.triggerKeywords
-            : String(rule?.triggerKeywords || '').split(/[,\u060C]/);
-          const normalizedKeywords = keywords
-            .map((keyword) => String(keyword || '').trim().toLowerCase())
-            .filter(Boolean);
-          const targetText = String(readCasePath(caseData, targetField) || '').toLowerCase();
-          const reminderMessage = String(rule?.reminderMessage || '').trim();
+          if (!allowedFields.has(condition1.field)) return;
+          if (condition2.enabled && !allowedFields.has(condition2.field)) return;
+          if (!matchesCustomReminderCondition(caseData, condition1)) return;
+          if (condition2.enabled && !matchesCustomReminderCondition(caseData, condition2)) return;
 
-          if (!normalizedKeywords.length || !reminderMessage) return;
-          if (!normalizedKeywords.some((keyword) => targetText.includes(keyword))) return;
+          if (actions.createTask && actions.taskMessage) {
+            const taskId = getCustomReminderTaskId(caseData.id, rule, index);
+            generatedTaskIds.push(taskId);
+            tasks.push({
+              id: taskId,
+              title: actions.taskMessage,
+              description: actions.taskMessage,
+              dueDate: today,
+              priority: 'high',
+              status: 'open',
+              taskType: 'custom_automation',
+              sourceRuleId: 'LB-DYNAMIC-CUSTOM-REMINDERS',
+              autoGenerated: true,
+              generatedFrom: {
+                type: 'custom_reminder_rule',
+                id: ruleId,
+                action: 'createTask'
+              }
+            });
+            hits.push(createRuleHit(
+              { id: 'LB-DYNAMIC-CUSTOM-REMINDERS', title: 'التذكيرات الديناميكية المخصصة', sourceLaw: 'custom', sourceArticle: '-' },
+              { deadlines: [], alerts: [], tasks: [taskId] },
+              `تم إنشاء مهمة من قاعدة ${ruleId} بعد تحقق الشروط.`
+            ));
+          }
 
-          const taskId = getCustomReminderTaskId(caseData.id, rule, index);
-          tasks.push({
-            id: taskId,
-            title: reminderMessage,
-            description: reminderMessage,
-            dueDate: today,
-            priority: 'high',
-            status: 'open',
-            taskType: 'custom_automation',
-            sourceRuleId: 'LB-DYNAMIC-CUSTOM-REMINDERS',
-            autoGenerated: true,
-            generatedFrom: {
-              type: 'custom_reminder_rule',
-              id: getCustomReminderRuleId(rule, index)
-            }
-          });
-          hits.push(createRuleHit(
-            { id: 'LB-DYNAMIC-CUSTOM-REMINDERS', title: 'التذكيرات الديناميكية المخصصة', sourceLaw: 'custom', sourceArticle: '-' },
-            { deadlines: [], alerts: [], tasks: [taskId] },
-            `تم إنشاء تذكير ديناميكي من الحقل ${targetField}.`
-          ));
+          if (actions.updateField && actions.targetField && actions.newValue && allowedFields.has(actions.targetField)) {
+            applyCustomReminderFieldUpdate(updates, caseData, actions.targetField, actions.newValue);
+            hits.push(createRuleHit(
+              { id: 'LB-DYNAMIC-CUSTOM-REMINDERS', title: 'التذكيرات الديناميكية المخصصة', sourceLaw: 'custom', sourceArticle: '-' },
+              { deadlines: [], alerts: [], tasks: [] },
+              `تم تحديث الحقل ${actions.targetField} من قاعدة ${ruleId}.`
+            ));
+          }
+
+          if (actions.doRollover) {
+            Object.assign(updates, getCustomReminderRoutePatch(actions.targetRoute));
+            hits.push(createRuleHit(
+              { id: 'LB-DYNAMIC-CUSTOM-REMINDERS', title: 'التذكيرات الديناميكية المخصصة', sourceLaw: 'custom', sourceArticle: '-' },
+              { deadlines: [], alerts: [], tasks: generatedTaskIds },
+              `تم ترحيل المسار إلى ${actions.targetRoute || 'sessions'} من قاعدة ${ruleId}.`
+            ));
+          }
         });
 
-        return { updates: {}, deadlines: [], alerts: [], tasks, hits };
+        return { updates, deadlines: [], alerts: [], tasks, hits };
       }
     }
   ];

@@ -174,4 +174,61 @@ describe('RulesEngine smoke baseline', () => {
     expect(withKeywords.tasks.some((task) => task.sourceRuleId === 'LB-DYNAMIC-CUSTOM-REMINDERS')).toBe(true);
     expect(withoutKeywords.tasks.some((task) => task.sourceRuleId === 'LB-DYNAMIC-CUSTOM-REMINDERS')).toBe(false);
   });
+
+  it('executes multi-condition custom rule actions when both conditions match', () => {
+    const engine = new RulesEngine({
+      customRules: { enabled: false },
+    });
+
+    const result = engine.evaluateCase(
+      {
+        id: 'case-6',
+        notes: 'ملف يحتاج مراجعة خبراء',
+        roleCapacity: 'مدعين / طاعنين',
+      },
+      {
+        today: '2026-04-04',
+        sessions: [],
+        judgments: [],
+        settings: {
+          customReminderRules: [
+            {
+              id: 'experts-plaintiff-route',
+              condition1: {
+                field: 'notes',
+                keywords: ['خبراء'],
+              },
+              condition2: {
+                enabled: true,
+                field: 'roleCapacity',
+                keywords: ['مدعين'],
+              },
+              actions: {
+                createTask: true,
+                taskMessage: 'مراجعة ملف الخبراء للمدعين',
+                updateField: true,
+                targetField: 'fileStatus',
+                newValue: 'يحتاج مراجعة',
+                doRollover: true,
+                targetRoute: 'chamber',
+              },
+            },
+          ],
+        },
+      }
+    );
+
+    expect(result.tasks).toHaveLength(1);
+    expect(result.tasks[0]).toMatchObject({
+      title: 'مراجعة ملف الخبراء للمدعين',
+      taskType: 'custom_automation',
+      sourceRuleId: 'LB-DYNAMIC-CUSTOM-REMINDERS',
+    });
+    expect(result.updates).toMatchObject({
+      fileStatus: 'يحتاج مراجعة',
+      agendaRoute: 'chamber',
+      status: 'under_review',
+    });
+    expect(result.hits.filter((hit) => hit.ruleId === 'LB-DYNAMIC-CUSTOM-REMINDERS').length).toBeGreaterThanOrEqual(3);
+  });
 });
