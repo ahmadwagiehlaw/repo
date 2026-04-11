@@ -8,6 +8,7 @@ import storage from '@/data/Storage.js';
 import { openCasePanel } from '@/utils/openCasePanel.js';
 import { formatCaseNumber } from '@/utils/caseUtils.js';
 import { useFieldDensity } from '@/hooks/useFieldDensity.js';
+import { useInstallPrompt } from '@/hooks/useInstallPrompt.js';
 import { useDisplaySettings } from '@/hooks/useDisplaySettings.js';
 import { useSensitiveMode } from '@/hooks/useSensitiveMode.js';
 import { getCaseSessionResult, getCaseTitle, getDerivedCaseSessionType } from '@/utils/caseCanonical.js';
@@ -185,6 +186,7 @@ export default function AppHeader() {
   const location = useLocation();
   const { density, toggle } = useFieldDensity();
   const { hidden: sensitiveHidden, toggle: toggleSensitiveMode } = useSensitiveMode();
+  const { canInstall, install } = useInstallPrompt();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -376,21 +378,8 @@ export default function AppHeader() {
       zIndex: 200,
       direction: 'rtl',
     }}>
-      <div className="app-header-logo" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 140, textDecoration: 'none' }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: 'var(--primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontWeight: 900, fontSize: 16
-        }}>
-          L
-        </div>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--primary)', lineHeight: 1 }}>LawBase</div>
-          <div className="app-header-workspace-name" style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>
-            {currentWorkspace?.name || 'مساحة العمل'}
-          </div>
-        </div>
+      <div className="app-header-logo" style={{ display: 'flex', alignItems: 'center', minWidth: '220px', textDecoration: 'none' }}>
+        <img src="/images/logo.png" alt="LawBase Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.05))' }} />
       </div>
 
       <div className="app-header-search" ref={searchRef} style={{ flex: 1, maxWidth: 500, position: 'relative', margin: '0 auto' }}>
@@ -512,6 +501,29 @@ export default function AppHeader() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 'auto' }}>
+        {canInstall && (
+          <button
+            onClick={install}
+            style={{
+              background: 'var(--primary)',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 12,
+              padding: '6px 10px',
+              color: 'white',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title="تثبيت التطبيق"
+          >
+            📲 تثبيت
+          </button>
+        )}
+
         {showDensityToggle && (
           <button
             onClick={toggle}

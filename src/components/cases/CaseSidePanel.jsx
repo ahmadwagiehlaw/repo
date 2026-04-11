@@ -61,20 +61,35 @@ export default function CaseSidePanel() {
   const [showQuickEdit, setShowQuickEdit] = useState(false);
   const [showRolloverMenu, setShowRolloverMenu] = useState(false);
   const [showCoverSelector, setShowCoverSelector] = useState(false);
+  const [localCoverUrl, setLocalCoverUrl] = useState(null);
 
   const imageAttachments = useMemo(() => {
     if (!caseData?.attachments) return [];
-    return caseData.attachments.filter(att => 
-      String(att.url || att.name || '').match(/\.(png|jpe?g|gif|webp)($|\?)/i)
+    return caseData.attachments.filter(att =>
+      String(att.url || att.title || att.name || '').match(/\.(png|jpe?g|gif|webp)($|\?)/i) ||
+      (att.localId && String(att.title || '').match(/\.(png|jpe?g|gif|webp)$/i))
     );
   }, [caseData]);
+
+  useEffect(() => {
+    const firstLocal = imageAttachments.find(a => a.localId && !a.url);
+    if (!firstLocal) { setLocalCoverUrl(null); return; }
+    import('@/services/LocalFileIndex.js').then(m =>
+      m.default.openFile(firstLocal.localId).then(result => {
+        setLocalCoverUrl(result?.url || null);
+      })
+    );
+  }, [imageAttachments]);
 
   const displayCover = useMemo(() => {
     if (!caseData) return null;
     if (caseData.coverImage) return caseData.coverImage;
-    if (imageAttachments.length > 0) return imageAttachments[0].url;
+    if (imageAttachments.length > 0) {
+      const first = imageAttachments[0];
+      return first.url || localCoverUrl || null;
+    }
     return null;
-  }, [caseData, imageAttachments]);
+  }, [caseData, imageAttachments, localCoverUrl]);
 
   // حساب التايم لاين الثلاثي
   const triple = useMemo(() => {
@@ -319,7 +334,19 @@ export default function CaseSidePanel() {
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.95)', zIndex: 10, display: 'flex', flexDirection: 'column', padding: '4px', overflowY: 'auto' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4, textAlign: 'center', color: 'var(--primary)' }}>اختر الغلاف</div>
                       {imageAttachments.map((att, idx) => (
-                        <div key={idx} onClick={() => handleUpdateCover(att.url)} style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}>{att.title || `صورة مرفقة ${idx + 1}`}</div>
+                        <div key={idx}
+                          onClick={async () => {
+                            if (att.localId && !att.url) {
+                              const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                              const result = await lfi.openFile(att.localId);
+                              if (result) handleUpdateCover(result.url);
+                            } else {
+                              handleUpdateCover(att.url);
+                            }
+                          }}
+                          style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}>
+                          {att.localId ? '💾 ' : ''}{att.title || `صورة مرفقة ${idx + 1}`}
+                        </div>
                       ))}
                       <div onClick={() => handleUpdateCover(null)} style={{ padding: '6px 4px', fontSize: 10, cursor: 'pointer', color: '#ef4444', textAlign: 'center', fontWeight: 600 }}>إزالة الغلاف</div>
                     </div>

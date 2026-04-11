@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import storage from '@/data/Storage.js';
 import {
   CASE_FLAGS_DEFAULT,
@@ -91,11 +91,11 @@ function FieldLabelWithManage({ label, onManage }) {
   );
 }
 
-export default function CaseForm({ caseData = null, onSave, onCancel, workspaceId, compact = false }) {
+export default function CaseForm({ caseData = null, onSave, onCancel, workspaceId, compact = false, initialTab = 'البيانات الأساسية' }) {
   const isNewCase = !caseData?.id;
   const normalizedCase = normalizeCaseNumberFields(caseData?.caseNumber || '', caseData?.caseYear || '');
   
-  const [activeTab, setActiveTab] = useState('البيانات الأساسية');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   
@@ -181,6 +181,10 @@ export default function CaseForm({ caseData = null, onSave, onCancel, workspaceI
     }
     loadOptions();
   }, [workspaceId]);
+
+  useEffect(() => {
+    setActiveTab(initialTab || 'البيانات الأساسية');
+  }, [initialTab]);
 
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -319,7 +323,7 @@ export default function CaseForm({ caseData = null, onSave, onCancel, workspaceI
     <>
       <form onSubmit={handleSubmit} className="card" style={{ display: 'grid', gap: '16px', padding: compact ? '16px' : '24px', position: 'relative' }}>
         
-        {/* ✨ Sticky Header المنظم ✨ */}
+        {/* الهيدر العلوي المنظم */}
         <div style={{
           position: 'sticky',
           top: compact ? '-16px' : '-24px',
@@ -419,7 +423,7 @@ export default function CaseForm({ caseData = null, onSave, onCancel, workspaceI
                   {form.joinedCases.map((joinedCase, index) => (
                     <div key={index} style={{ display: 'flex', gap: '8px' }}>
                       <input className="form-input" placeholder="مثال: 123/2024" value={joinedCase} onChange={(e) => handleJoinedCaseChange(index, e.target.value)} />
-                      <button type="button" onClick={() => removeJoinedCase(index)} className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5', padding: '8px' }}>✕</button>
+                      <button type="button" onClick={() => removeJoinedCase(index)} className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5', padding: '8px' }}>حذف</button>
                     </div>
                   ))}
                 </div>
@@ -490,7 +494,7 @@ export default function CaseForm({ caseData = null, onSave, onCancel, workspaceI
                       <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px' }}>
                         <input className="form-input" placeholder="الاسم" value={defendant.name} onChange={(e) => handleOtherDefendantChange(index, 'name', e.target.value)} />
                         <input className="form-input" placeholder="العنوان" value={defendant.address} onChange={(e) => handleOtherDefendantChange(index, 'address', e.target.value)} />
-                        <button type="button" onClick={() => removeOtherDefendant(index)} className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5', padding: '8px' }}>✕</button>
+                        <button type="button" onClick={() => removeOtherDefendant(index)} className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5', padding: '8px' }}>حذف</button>
                       </div>
                     ))}
                   </div>
@@ -560,7 +564,7 @@ export default function CaseForm({ caseData = null, onSave, onCancel, workspaceI
 
             <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
               <button type="button" onClick={() => setShowAdvancedRoute(!showAdvancedRoute)} className="btn-secondary" style={{ padding: '4px 10px', fontSize: '12px', border: 'none', background: 'none', color: 'var(--text-secondary)' }}>
-                ⚙️ {showAdvancedRoute ? 'إخفاء خيارات المسار المتقدمة' : 'خيارات المسار المتقدمة (تعديل الحالة يدوياً)'}
+                إعدادات {showAdvancedRoute ? 'إخفاء خيارات المسار المتقدمة' : 'خيارات المسار المتقدمة (تعديل الحالة يدوياً)'}
               </button>
               
               {showAdvancedRoute && (

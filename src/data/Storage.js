@@ -12,6 +12,7 @@
  */
 
 import { CASE_FLAGS_DEFAULT } from '../core/Constants.js';
+import { initAuditLogger } from '@/services/AuditLogger.js';
 
 // ─── Firestore instance (تُعيَّن عند initStorage) ────────────────────────────
 let _db = null;
@@ -92,6 +93,7 @@ async function deleteCollectionDocs(collectionRef, batchSize = 200) {
  */
 export function initStorage(firestoreInstance) {
   _db = firestoreInstance;
+  initAuditLogger(firestoreInstance);
 }
 
 /**
@@ -1120,7 +1122,7 @@ export const storage = {
     ensureDb();
 
     const resolvedWorkspaceId = String(workspaceId || '').trim();
-    if (!resolvedWorkspaceId) throw new Error('workspaceId ظ…ط·ظ„ظˆط¨');
+    if (!resolvedWorkspaceId) throw new Error('workspaceId مطلوب');
 
     const workspaceRef = _db.collection('workspaces').doc(resolvedWorkspaceId);
     const casesSnapshot = await workspaceRef.collection('cases').get();
@@ -1140,6 +1142,72 @@ export const storage = {
 
     for (const collectionName of collectionsToClear) {
       await deleteCollectionDocs(workspaceRef.collection(collectionName));
+    }
+  },
+
+  /**
+   * Batch 1.1 — SSOT: Update user's primary workspace in Firestore
+   */
+  async updateUserPrimaryWorkspace(userId, workspaceId) {
+    if (!userId || !workspaceId) return;
+    await db
+      .collection('users')
+      .doc(String(userId))
+      .set({ primaryWorkspaceId: String(workspaceId) }, { merge: true });
+  },
+
+  /**
+   * Batch 5.3 — Firebase Storage: Upload attachment file
+   * PRO plan only — called by SubscriptionManager guard
+   * @param {string} workspaceId
+   * @param {string} caseId
+   * @param {string} attachmentId
+   * @param {File} file
+   * @param {function} onProgress - callback(percentage)
+   * @returns {Promise<string>} download URL
+   */
+  async uploadAttachment(workspaceId, caseId, attachmentId, file, onProgress) {
+    if (!workspaceId || !caseId || !attachmentId || !file) {
+      throw new Error('uploadAttachment: missing required parameters');
+    }
+    const { storage: fbStorage } = await import('@/config/firebase.js');
+    const path = `workspaces/${workspaceId}/cases/${caseId}/${attachmentId}`;
+    const ref = fbStorage.ref(path);
+    return new Promise((resolve, reject) => {
+      const task = ref.put(file);
+      task.on(
+        'state_changed',
+        (snapshot) => {
+          if (onProgress) {
+            const pct = Math.round(
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+            );
+            onProgress(pct);
+          }
+        },
+        (error) => reject(error),
+        async () => {
+          const downloadUrl = await task.snapshot.ref.getDownloadURL();
+          resolve(downloadUrl);
+        }
+      );
+    });
+  },
+
+  /**
+   * Batch 5.3 — Firebase Storage: Delete attachment file
+   */
+  async deleteAttachment(workspaceId, caseId, attachmentId) {
+    if (!workspaceId || !caseId || !attachmentId) return;
+    try {
+      const { storage: fbStorage } = await import('@/config/firebase.js');
+      const path = `workspaces/${workspaceId}/cases/${caseId}/${attachmentId}`;
+      await fbStorage.ref(path).delete();
+    } catch (error) {
+      // File may not exist in cloud — not critical
+      if (error.code !== 'storage/object-not-found') {
+        console.error('deleteAttachment error:', error);
+      }
     }
   },
 };

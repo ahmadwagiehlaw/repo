@@ -667,6 +667,128 @@ export const PLAN_LIMITS = {
 };
 
 // ============================================================================
+// ATTACHMENT TYPES — Smart Legal Documents System
+// ============================================================================
+
+export const ATTACHMENT_TYPES = [
+  // ── وثائق الدفاع ──────────────────────────────────────────────────────────
+  {
+    id: 'defense_memo',
+    label: 'مذكرة دفاع',
+    icon: '⚖️',
+    color: '#3b82f6',
+    bg: '#dbeafe',
+    autoLog: true,
+    logTemplate: 'تم إيداع مذكرة بالدفاع',
+    hasSessionDate: true,
+  },
+  {
+    id: 'opinion_memo',
+    label: 'مذكرة رأي',
+    icon: '📋',
+    color: '#8b5cf6',
+    bg: '#f3e8ff',
+    autoLog: true,
+    logTemplate: 'تم إيداع مذكرة برأي',
+    hasSessionDate: true,
+  },
+  {
+    id: 'case_file',
+    label: 'ملف الدعوى',
+    icon: '🗂️',
+    color: '#f59e0b',
+    bg: '#fef3c7',
+    autoLog: false,
+    hasSessionDate: false,
+  },
+  {
+    id: 'docs_folder',
+    label: 'حافظة مستندات',
+    icon: '📁',
+    color: '#10b981',
+    bg: '#d1fae5',
+    autoLog: false,
+    hasSessionDate: false,
+  },
+  // ── وثائق المحكمة ─────────────────────────────────────────────────────────
+  {
+    id: 'judgment_draft',
+    label: 'مسودة حكم',
+    icon: '📜',
+    color: '#dc2626',
+    bg: '#fee2e2',
+    autoLog: true,
+    logTemplate: 'تم إيداع مسودة الحكم',
+    hasSessionDate: true,
+  },
+  {
+    id: 'commissioner_rep',
+    label: 'تقرير مفوضين',
+    icon: '📊',
+    color: '#7c3aed',
+    bg: '#ede9fe',
+    autoLog: true,
+    logTemplate: 'تم إيداع تقرير المفوضين',
+    hasSessionDate: true,
+  },
+  {
+    id: 'expert_report',
+    label: 'تقرير خبراء',
+    icon: '🔬',
+    color: '#0891b2',
+    bg: '#cffafe',
+    autoLog: true,
+    logTemplate: 'تم إيداع تقرير الخبراء',
+    hasSessionDate: false,
+  },
+  // ── إجراءات ───────────────────────────────────────────────────────────────
+  {
+    id: 'notification',
+    label: 'إعلان الخصم',
+    icon: '📬',
+    color: '#ea580c',
+    bg: '#ffedd5',
+    autoLog: true,
+    logTemplate: 'تم إعلان الخصم',
+    hasSessionDate: false,
+  },
+  {
+    id: 'admin_procedure',
+    label: 'إجراءات إدارية',
+    icon: '🏛️',
+    color: '#64748b',
+    bg: '#f1f5f9',
+    autoLog: false,
+    hasSessionDate: false,
+  },
+  // ── مرئيات ────────────────────────────────────────────────────────────────
+  {
+    id: 'file_cover',
+    label: 'غلاف الملف',
+    icon: '🖼️',
+    color: '#84cc16',
+    bg: '#f7fee7',
+    autoLog: false,
+    hasSessionDate: false,
+    isCover: true,
+  },
+  // ── عام ───────────────────────────────────────────────────────────────────
+  {
+    id: 'other',
+    label: 'أخرى',
+    icon: '📎',
+    color: '#94a3b8',
+    bg: '#f8fafc',
+    autoLog: false,
+    hasSessionDate: false,
+  },
+];
+
+export const ATTACHMENT_TYPE_MAP = Object.fromEntries(
+  ATTACHMENT_TYPES.map((t) => [t.id, t])
+);
+
+// ============================================================================
 // MODULE EXPORTS SUMMARY
 // ============================================================================
 

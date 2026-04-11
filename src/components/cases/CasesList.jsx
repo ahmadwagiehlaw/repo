@@ -47,6 +47,11 @@ const STATUS_LABELS = {
   archived: 'مؤرشفة',
 };
 
+function getCoverImage(caseItem) {
+  // Only use coverImage, no fallback
+  return caseItem.coverImage || null;
+}
+
 function getCapacityStyle(capacity) {
   const text = String(capacity || '').trim();
   if (text.includes('مدعين') || text.includes('طاعن') || text === 'مدعي' || text.includes('مستأنف')) {
@@ -341,24 +346,36 @@ export default function CasesList() {
                   }}
                   onClick={() => handleCaseClick(caseItem.id)}
                 >
-                  {/* Identity Row */}
+
+                  {/* Identity Row: Cover + Number + Delete */}
                   <div className="case-card-row case-card-row--identity" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div
-                      title="تحديد الدعوى"
-                      onClick={(e) => { e.stopPropagation(); toggleCaseSelection(caseItem.id); }}
-                      style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', border: isSelected ? 'none' : '2px solid #cbd5e1', background: isSelected ? '#f59e0b' : 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 0 3px rgba(245, 158, 11, 0.2)' : 'none' }}
-                    >
-                      {isSelected && <span style={{ color: 'white', fontSize: 13, fontWeight: 900, lineHeight: 1 }}>✓</span>}
-                    </div>
+                    {/* Cover image thumbnail */}
+                    {caseItem.coverImage && (
+                      <div style={{
+                        width: 40, height: 40, flexShrink: 0,
+                        borderRadius: 8, overflow: 'hidden',
+                        border: '1px solid #e2e8f0',
+                        background: '#f8fafc',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <img src={caseItem.coverImage} alt="غلاف" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
 
                     <CaseNumberBadge caseNumber={caseItem.caseNumber} caseYear={caseItem.caseYear} caseData={caseItem} variant="pill" displayOrder={displaySettings.caseNumberDisplayOrder} className="case-number-pill" style={pillStyle} />
-                    
-                    <div className="case-badge-bar" onClick={e => e.stopPropagation()} style={{ marginInlineStart: 'auto' }}>
-                      {['isImportant','needsReview','isUrgent','isPlaintiff'].map(flag => {
-                        const icons = { isImportant:'⭐', needsReview:'🔔', isUrgent:'🔴', isPlaintiff:'⚖️' };
-                        return <button key={flag} className={`badge-btn ${flags[flag] ? 'badge-active' : 'badge-inactive'} ${flag === 'isUrgent' ? 'badge-readonly' : ''}`} onClick={e => toggleFlag(e, caseItem, flag)}>{icons[flag]}</button>;
-                      })}
-                    </div>
+
+                    {/* زر الحذف */}
+                    <button className="badge-btn badge-inactive" onClick={(e) => { e.stopPropagation(); handleDeleteCase(e, caseItem); }} style={{ color: '#dc2626', marginInlineStart: 8 }}>
+                      🗑
+                    </button>
+                  </div>
+
+                  {/* البادجات تحت رقم القضية */}
+                  <div className="case-badge-bar" onClick={e => e.stopPropagation()} style={{ margin: '6px 0 0 0' }}>
+                    {['isImportant','needsReview','isUrgent','isPlaintiff'].map(flag => {
+                      const icons = { isImportant:'⭐', needsReview:'🔔', isUrgent:'🔴', isPlaintiff:'⚖️' };
+                      return <button key={flag} className={`badge-btn ${flags[flag] ? 'badge-active' : 'badge-inactive'} ${flag === 'isUrgent' ? 'badge-readonly' : ''}`} onClick={e => toggleFlag(e, caseItem, flag)}>{icons[flag]}</button>;
+                    })}
                   </div>
 
                   <div className="case-card-row case-card-row--plaintiff">
@@ -403,13 +420,32 @@ export default function CasesList() {
 
                   {/* Footer */}
                   <div className="case-card-row case-card-row--footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', flexWrap: 'wrap', gap: 6 }}>
-                    {fileLocation && <span className={`case-capsule ${fileWarning ? 'case-capsule--warn' : ''}`}>📁 {fileLocation}</span>}
+                    {fileLocation && (
+                      <span className={`case-capsule ${fileWarning ? 'case-capsule--warn' : ''}`}>
+                        {caseItem.coverImage
+                          ? <img
+                              src={caseItem.coverImage}
+                              alt="غلاف"
+                              style={{
+                                width: 18,
+                                height: 18,
+                                borderRadius: '4px',
+                                objectFit: 'cover',
+                                verticalAlign: 'middle',
+                                marginInlineEnd: 4,
+                              }}
+                            />
+                          : <span style={{ marginInlineEnd: 4 }}>📁</span>
+                        }
+                        {fileLocation}
+                      </span>
+                    )}
                     {caseItem.fileStatus && <span className="case-capsule">{FILE_STATUS_LABELS[caseItem.fileStatus] || caseItem.fileStatus}</span>}
                     <span className="case-capsule">{routeMeta.label}</span>
                     {roleCapacity && <span className={`case-capsule ${isDormant ? 'case-capsule--dormant' : ''}`} style={getCapacityStyle(roleCapacity)}>{roleCapacity}</span>}
                     <span className="case-capsule case-workflow-chip">{statusLabel}</span>
                     {joinedCount > 0 && <span className="case-joined-chip">+{joinedCount} منضمة</span>}
-                    <button className="badge-btn badge-inactive" onClick={(e) => handleDeleteCase(e, caseItem)} style={{ color: '#dc2626', zIndex: 10, marginInlineStart: 'auto' }}>🗑</button>
+                    {/* حذف زر الحذف من الفوتر نهائياً */}
                   </div>
                 </div>
               );

@@ -3,6 +3,7 @@ import { db } from '@/config/firebase.js';
 import storage, { initStorage } from '@/data/Storage.js';
 import { getWorkspacePlanFeatures, LAWBASE_EVENTS } from '@/core/Constants.js';
 import { useAuth } from '@/contexts/AuthContext';
+import subscriptionManager from '@/services/SubscriptionManager.js';
 
 const WorkspaceContext = createContext(undefined);
 
@@ -135,6 +136,9 @@ export function WorkspaceProvider({ children }) {
         currentWorkspace = bootstrapped?.currentWorkspace || workspaces[0] || null;
       }
 
+      if (currentWorkspace) {
+        subscriptionManager.init(currentWorkspace);
+      }
       dispatch({
         type: 'WORKSPACES_LOADED',
         payload: { workspaces, currentWorkspace },
@@ -207,10 +211,7 @@ export function WorkspaceProvider({ children }) {
       // Update Firestore user's primary workspace
       const userId = String(user?.uid || '').trim();
       if (userId) {
-        await db
-          .collection('users')
-          .doc(userId)
-          .set({ primaryWorkspaceId: String(selected.id) }, { merge: true });
+        await storage.updateUserPrimaryWorkspace(userId, selected.id);
       }
 
       dispatch({ type: 'WORKSPACE_SWITCHED', payload: selected });
