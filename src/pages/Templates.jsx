@@ -403,6 +403,95 @@ function sanitizePastedHtml(rawHtml) {
   return cleaned;
 }
 
+function decodeRtfUnicode(text) {
+  return String(text || '').replace(/\\u(-?\d+)\??/g, (_, codePoint) => {
+    const value = Number(codePoint);
+    if (!Number.isFinite(value)) return '';
+    const normalized = value < 0 ? 65536 + value : value;
+    try {
+      return String.fromCharCode(normalized);
+    } catch {
+      return '';
+    }
+  });
+}
+
+function extractPlainTextFromRtf(rtf) {
+  const source = String(rtf || '').trim();
+  if (!source) return '';
+
+  return decodeRtfUnicode(source)
+    .replace(/\\par[d]?/gi, '\n')
+    .replace(/\\line/gi, '\n')
+    .replace(/\\tab/gi, '\t')
+    .replace(/\\'[0-9a-fA-F]{2}/g, '')
+    .replace(/\\[a-z]+-?\d* ?/gi, '')
+    .replace(/[{}]/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function extractPlainTextFromHtml(html) {
+  const source = String(html || '').trim();
+  if (!source) return '';
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(source, 'text/html');
+    return String(doc.body?.innerText || doc.body?.textContent || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  } catch {
+    return '';
+  }
+}
+
+function getClipboardInsertPayload(clipboardData) {
+  const html = String(
+    clipboardData?.getData('text/html')
+    || clipboardData?.getData('Html')
+    || ''
+  ).trim();
+  const text = String(
+    clipboardData?.getData('text/plain')
+    || clipboardData?.getData('Text')
+    || clipboardData?.getData('text')
+    || ''
+  ).trim();
+  const rtf = String(
+    clipboardData?.getData('text/rtf')
+    || clipboardData?.getData('application/rtf')
+    || ''
+  ).trim();
+
+  if (html) {
+    const cleanedHtml = sanitizePastedHtml(html);
+    if (cleanedHtml) {
+      return { value: cleanedHtml, treatAsHtml: true };
+    }
+
+    const extractedHtmlText = extractPlainTextFromHtml(html);
+    if (extractedHtmlText) {
+      return { value: extractedHtmlText, treatAsHtml: false };
+    }
+  }
+
+  if (text) {
+    return { value: text, treatAsHtml: false };
+  }
+
+  if (rtf) {
+    const extractedText = extractPlainTextFromRtf(rtf);
+    if (extractedText) {
+      return { value: extractedText, treatAsHtml: false };
+    }
+  }
+
+  return { value: '', treatAsHtml: false };
+}
+
 function escapeHtml(text) {
   return String(text || '')
     .replace(/&/g, '&amp;')
@@ -1758,6 +1847,19 @@ export default function Templates() {
     return true;
   };
 
+  const selectAllEditorContent = useCallback((hostElement = null) => {
+    const host = hostElement || editorRef.current;
+    const selection = window.getSelection();
+    if (!host || !selection) return false;
+
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    saveCurrentSelection();
+    return true;
+  }, [saveCurrentSelection]);
+
   const handleImageResizeMove = useCallback((event) => {
     const session = imageResizeSessionRef.current;
     if (!session?.image?.isConnected) return;
@@ -1891,40 +1993,12 @@ export default function Templates() {
 
     if (!file) return;
     insertImageFromFile(file);
-    return;
-    if (!String(file.type || '').startsWith('image/')) {
-      alert('يرجى اختيار ملف صورة صالح');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = String(reader.result || '');
-      if (!src) return;
-
-      const imageHtml = `<p style="text-align:center"><img src="${src}" alt="صورة مرفقة" style="display:block;max-width:100%;width:50%;height:auto;margin:12px auto" /></p>`;
-      const restored = restoreSavedSelection();
-      const inserted = restored
-        ? insertIntoEditor(imageHtml, { treatAsHtml: true })
-        : appendIntoEditor(imageHtml, { treatAsHtml: true });
-
-      if (inserted) {
-        window.setTimeout(() => {
-          const host = editorRef.current;
-          if (!host) return;
-          const images = host.querySelectorAll('img');
-          const insertedImage = images[images.length - 1];
-          if (insertedImage) setSelectedImage(insertedImage);
-        }, 0);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const applyImagePreset = (preset) => {
     const image = getSelectedImage();
     if (!image) {
-      alert('حدد صورة داخل المحرر أولًا');
+      alert('حدد صورة داخل المحرر أولاً');
       return;
     }
 
@@ -1951,7 +2025,7 @@ export default function Templates() {
   const applyImageAlignment = (alignment) => {
     const image = getSelectedImage();
     if (!image) {
-      alert('حدد صورة داخل المحرر أولًا');
+      alert('حدد صورة داخل المحرر أولاً');
       return;
     }
 
@@ -2196,6 +2270,7 @@ export default function Templates() {
   }, [editorHeight, getSelectedImage, isEditorFullscreen, refreshImageResizeHandle, selectedImageToken]);
 
   const openPasteModal = () => {
+    saveCurrentSelection();
     setPasteBuffer('');
     setPasteBufferIsHtml(false);
     setShowPasteModal(true);
@@ -2204,15 +2279,27 @@ export default function Templates() {
   const applyPasteFromModal = () => {
     const current = String(pasteBuffer || '');
     if (!current.trim()) {
-      alert('لا يوجد نص للصق');
+      alert('لا يوجد محتوى للصق');
       return;
     }
 
     const looksLikeHtml = pasteBufferIsHtml || /<[^>]+>/.test(current);
-    appendIntoEditor(current, { treatAsHtml: looksLikeHtml });
+    const restored = restoreSavedSelection();
+    const inserted = restored
+      ? insertIntoEditor(current, { treatAsHtml: looksLikeHtml })
+      : appendIntoEditor(current, { treatAsHtml: looksLikeHtml });
+
+    if (!inserted) {
+      alert('تعذر إدراج المحتوى داخل المحرر');
+      return;
+    }
+
     setShowPasteModal(false);
     setPasteBuffer('');
     setPasteBufferIsHtml(false);
+    editorRef.current?.focus();
+    saveCurrentSelection();
+    window.requestAnimationFrame(refreshImageResizeHandle);
     flashSuccess('تم إدراج المحتوى ✅');
   };
 
@@ -2222,23 +2309,31 @@ export default function Templates() {
         const items = await navigator.clipboard.read();
         let htmlPayload = '';
         let textPayload = '';
+        let rtfPayload = '';
 
         for (const item of items) {
-          if (item.types.includes('text/html')) {
-            const blob = await item.getType('text/html');
+          if (!htmlPayload && (item.types.includes('text/html') || item.types.includes('Html'))) {
+            const blob = await item.getType(item.types.includes('text/html') ? 'text/html' : 'Html');
             htmlPayload = await blob.text();
-            break;
           }
-          if (!textPayload && item.types.includes('text/plain')) {
-            const blob = await item.getType('text/plain');
+          if (!textPayload && (item.types.includes('text/plain') || item.types.includes('Text'))) {
+            const blob = await item.getType(item.types.includes('text/plain') ? 'text/plain' : 'Text');
             textPayload = await blob.text();
+          }
+          if (!rtfPayload && (item.types.includes('text/rtf') || item.types.includes('application/rtf'))) {
+            const blob = await item.getType(item.types.includes('text/rtf') ? 'text/rtf' : 'application/rtf');
+            rtfPayload = await blob.text();
           }
         }
 
-        const payload = String(htmlPayload || textPayload || '');
+        const payload = String(
+          htmlPayload
+            ? (sanitizePastedHtml(htmlPayload) || extractPlainTextFromHtml(htmlPayload))
+            : textPayload || extractPlainTextFromRtf(rtfPayload)
+        );
         if (payload.trim()) {
           setPasteBuffer(payload);
-          setPasteBufferIsHtml(Boolean(htmlPayload));
+          setPasteBufferIsHtml(Boolean(htmlPayload && sanitizePastedHtml(htmlPayload)));
           flashSuccess(htmlPayload ? 'تم جلب HTML من الحافظة ✅' : 'تم جلب النص من الحافظة ✅');
           return;
         }
@@ -2254,9 +2349,9 @@ export default function Templates() {
         }
       }
 
-      alert('تعذر قراءة الحافظة. استخدم Ctrl+V داخل الحقل.');
+      alert('المتصفح منع قراءة الحافظة تلقائيًا. استخدم Ctrl+V داخل الحقل.');
     } catch {
-      alert('المتصفح منع قراءة الحافظة تلقائياً. استخدم Ctrl+V داخل الحقل.');
+      alert('المتصفح منع قراءة الحافظة تلقائيًا. استخدم Ctrl+V داخل الحقل.');
     }
   };
 
@@ -2797,42 +2892,7 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
                 ↪
               </button>
               <div style={S.toolbarDivider} />
-              <button type="button" style={{ ...S.toolbarBtnActive, minWidth: '88px' }} onClick={triggerImageInsert} title="إدراج صورة">
-                صورة
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImagePreset('small')} title="تصغير الصورة" disabled={!selectedImageToken}>
-                صغير
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImagePreset('medium')} title="حجم متوسط للصورة" disabled={!selectedImageToken}>
-                متوسط
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImagePreset('large')} title="تكبير الصورة" disabled={!selectedImageToken}>
-                كبير
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImagePreset('full')} title="عرض كامل للصورة" disabled={!selectedImageToken}>
-                كامل
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImageAlignment('right')} title="محاذاة الصورة يمين" disabled={!selectedImageToken}>
-                يمين
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImageAlignment('center')} title="توسيط الصورة" disabled={!selectedImageToken}>
-                وسط
-              </button>
-              <button type="button" style={selectedImageToken ? S.toolbarBtnActive : S.toolbarBtnDisabled} onClick={() => applyImageAlignment('left')} title="محاذاة الصورة يسار" disabled={!selectedImageToken}>
-                يسار
-              </button>
-              {selectedImageToken && (
-                <span style={S.imageHint}>تم تحديد صورة ويمكن تعديل حجمها الآن</span>
-              )}
             </div>
-
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleImageFileChange}
-            />
 
             {/* Tag Picker (Grouped) */}
             <div style={S.tagSection}>
@@ -2972,33 +3032,24 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
                   height: isEditorFullscreen ? '100%' : `${editorHeight}px`,
                 }}
                 onPaste={(event) => {
-                  const imageItem = Array.from(event.clipboardData?.items || []).find((item) =>
-                    String(item?.type || '').startsWith('image/')
-                  );
+                  const payloadInfo = getClipboardInsertPayload(event.clipboardData);
+                  if (!payloadInfo.value) return;
 
-                  if (imageItem) {
-                    const file = imageItem.getAsFile();
-                    if (file) {
-                      event.preventDefault();
-                      saveCurrentSelection();
-                      insertImageFromFile(file);
-                      return;
-                    }
+                  event.preventDefault();
+                  const { value, treatAsHtml } = payloadInfo;
+
+                  let inserted = insertIntoEditor(value, { treatAsHtml });
+                  if (!inserted) {
+                    const restored = restoreSavedSelection();
+                    inserted = restored
+                      ? insertIntoEditor(value, { treatAsHtml })
+                      : appendIntoEditor(value, { treatAsHtml });
                   }
 
-                  window.setTimeout(() => {
-                    const host = event.currentTarget;
-                    if (!host) return;
-                    const current = String(host.innerHTML || '').trim();
-                    if (!current) return;
-                    const cleaned = sanitizePastedHtml(current);
-                    if (cleaned && cleaned !== current) {
-                      host.innerHTML = cleaned;
-                    }
-                    setTemplateContent(host.innerHTML || '');
-                    setIsDirty(true);
-                    refreshImageResizeHandle();
-                  }, 0);
+                  if (inserted) {
+                    saveCurrentSelection();
+                    window.requestAnimationFrame(refreshImageResizeHandle);
+                  }
                 }}
                 onClick={(event) => {
                   const target = event.target;
@@ -3014,6 +3065,12 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
                   }
                 }}
                 onKeyDown={(event) => {
+                  const ctrl = event.ctrlKey || event.metaKey;
+                  if (ctrl && event.key.toLowerCase() === 'a') {
+                    event.preventDefault();
+                    selectAllEditorContent(event.currentTarget);
+                    return;
+                  }
                   if ((event.key === 'Delete' || event.key === 'Backspace') && selectedEditorElementToken) {
                     const selection = window.getSelection();
                     const hasTextSelection = Boolean(selection && !selection.isCollapsed && String(selection.toString() || '').trim());
@@ -3544,13 +3601,18 @@ hr{border:none;border-top:1px solid #cbd5e1;margin:1em 0}
                   dir="rtl"
                   data-placeholder="الصق المحتوى هنا..."
                   onPaste={(event) => {
-                    const html = event.clipboardData?.getData('text/html');
-                    const text = event.clipboardData?.getData('text/plain');
-                    if (html || text) {
+                    const payloadInfo = getClipboardInsertPayload(event.clipboardData);
+                    if (payloadInfo.value) {
                       event.preventDefault();
-                      const next = String(html || text || '');
-                      setPasteBuffer(next);
-                      setPasteBufferIsHtml(Boolean(html));
+                      setPasteBuffer(String(payloadInfo.value || ''));
+                      setPasteBufferIsHtml(Boolean(payloadInfo.treatAsHtml));
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    const ctrl = event.ctrlKey || event.metaKey;
+                    if (ctrl && event.key.toLowerCase() === 'a') {
+                      event.preventDefault();
+                      selectAllEditorContent(event.currentTarget);
                     }
                   }}
                   onInput={(e) => {

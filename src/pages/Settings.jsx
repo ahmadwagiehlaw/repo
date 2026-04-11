@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import storage from '@/data/Storage.js';
 import SmartImporter from '@/components/import/SmartImporter.jsx';
 import DataExporter from '@/components/export/DataExporter.jsx';
+import auditLogger from '@/services/AuditLogger.js';
+import subscriptionManager from '@/services/SubscriptionManager.js';
 import {
   LITIGATION_STAGE_OPTIONS,
   PROCEDURE_TRACK,
@@ -20,6 +22,8 @@ const SETTINGS_TABS = [
   { id: 'appearance', label: '🎨 المظهر', desc: 'التخصيص البصري' },
   { id: 'members', label: '👥 الأعضاء', desc: 'إدارة الفريق' },
   { id: 'import', label: '📥 الاستيراد والتصدير', desc: 'استيراد وتصدير البيانات' },
+  { id: 'audit', label: '🔍 سجل التدقيق', desc: 'سجل العمليات' },
+  { id: 'admin', label: '👑 الأدمن', desc: 'إدارة الاشتراكات' },
 ];
 
 const DISPLAY_FORMAT_OPTIONS = [
@@ -1791,6 +1795,17 @@ export default function Settings() {
         </div>
       )}
 
+      {activeTab === 'audit' && (
+        <AuditLogViewer workspaceId={workspaceId} />
+      )}
+
+      {activeTab === 'admin' && (
+        <AdminSubscriptionPanel
+          workspaceId={workspaceId}
+          currentWorkspace={currentWorkspace}
+        />
+      )}
+
       {activeTab === 'import' && (
         canManageWorkspaceSettings ? (
           <div style={{ width: '100%', maxWidth: 920 }}>
@@ -1812,6 +1827,242 @@ export default function Settings() {
           </div>
         )
       )}
+    </div>
+  );
+}
+
+// ── AuditLogViewer Component ─────────────────────────────────
+function AuditLogViewer({ workspaceId }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filterAction, setFilterAction] = useState('');
+
+  const hasAccess = subscriptionManager.hasFeature('auditLog');
+
+  useEffect(() => {
+    if (!hasAccess || !workspaceId) return;
+    setLoading(true);
+    auditLogger.getRecentLogs(workspaceId, 50)
+      .then(setLogs)
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false));
+  }, [workspaceId, hasAccess]);
+
+  if (!hasAccess) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center', direction: 'rtl' }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+          سجل التدقيق
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {subscriptionManager.getUpgradeMessage('auditLog')}
+        </div>
+      </div>
+    );
+  }
+
+  const filteredLogs = filterAction
+    ? logs.filter((l) => l.action === filterAction)
+    : logs;
+
+  const uniqueActions = [...new Set(logs.map((l) => l.action))];
+
+  return (
+    <div style={{ direction: 'rtl' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0, fontSize: 15 }}>🔍 سجل التدقيق</h3>
+        <select
+          value={filterAction}
+          onChange={(e) => setFilterAction(e.target.value)}
+          className="form-input"
+          style={{ width: 200, fontSize: 13 }}
+        >
+          <option value="">كل العمليات</option>
+          {uniqueActions.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
+          جاري التحميل...
+        </div>
+      ) : filteredLogs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+          <div>لا توجد عمليات مسجلة بعد</div>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-secondary)' }}>
+                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>العملية</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>المستخدم</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>التوقيت</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLogs.map((log) => (
+                <tr key={log.id} style={{ borderBottom: '1px solid var(--border-light)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <td style={{ padding: '8px 12px', fontWeight: 600 }}>{log.action}</td>
+                  <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{log.userId?.substring(0, 12)}...</td>
+                  <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                    {log.timestamp ? new Date(log.timestamp).toLocaleString('ar-EG') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AdminSubscriptionPanel Component ────────────────────────
+function AdminSubscriptionPanel({ workspaceId, currentWorkspace }) {
+  const [plan, setPlan] = useState(currentWorkspace?.plan || 'free');
+  const [expiresAt, setExpiresAt] = useState(
+    currentWorkspace?.subscriptionExpiresAt || ''
+  );
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const PLANS = [
+    { value: 'free',  label: '🆓 مجاني',  desc: 'حتى 50 قضية — بدون مزامنة سحابية' },
+    { value: 'pro',   label: '⭐ Pro',    desc: 'حتى 500 قضية — مزامنة سحابية + سجل تدقيق' },
+    { value: 'team',  label: '👥 Team',   desc: 'غير محدود — تعدد مستخدمين + دعوات' },
+  ];
+
+  const handleSave = async () => {
+    if (!workspaceId) return;
+    setSaving(true);
+    try {
+      await storage.updateWorkspaceSettings(workspaceId, {
+        plan,
+        subscriptionExpiresAt: expiresAt || null,
+      });
+      const { default: subscriptionManager } =
+        await import('@/services/SubscriptionManager.js');
+      subscriptionManager.init({
+        ...currentWorkspace,
+        plan,
+        subscriptionExpiresAt: expiresAt || null,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      alert('حدث خطأ أثناء الحفظ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ direction: 'rtl', maxWidth: 560 }}>
+      <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 800 }}>
+        👑 إدارة الاشتراك
+      </h3>
+
+      {/* Plan selector */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--text-secondary)' }}>
+          خطة مساحة العمل
+        </div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {PLANS.map((p) => (
+            <label
+              key={p.value}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 16px', borderRadius: 10, cursor: 'pointer',
+                border: plan === p.value
+                  ? '2px solid var(--primary)'
+                  : '1px solid var(--border)',
+                background: plan === p.value ? 'var(--primary-light)' : 'white',
+                transition: 'all 0.15s',
+              }}
+            >
+              <input
+                type="radio"
+                name="plan"
+                value={p.value}
+                checked={plan === p.value}
+                onChange={() => setPlan(p.value)}
+                style={{ accentColor: 'var(--primary)' }}
+              />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {p.desc}
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Expiry date */}
+      {plan !== 'free' && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>
+            تاريخ انتهاء الاشتراك (اتركه فارغاً = دائم)
+          </div>
+          <input
+            type="date"
+            value={expiresAt ? expiresAt.substring(0, 10) : ''}
+            onChange={(e) => setExpiresAt(e.target.value
+              ? new Date(e.target.value).toISOString()
+              : '')}
+            className="form-input"
+            style={{ maxWidth: 220 }}
+          />
+        </div>
+      )}
+
+      {/* Current features */}
+      <div style={{
+        padding: '12px 16px', borderRadius: 10,
+        background: '#f8fafc', border: '1px solid var(--border)',
+        marginBottom: 24, fontSize: 12,
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 13 }}>
+          الميزات المتاحة في خطة "{PLANS.find(p => p.value === plan)?.label}":
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {(plan === 'free'
+            ? ['القضايا','الجلسات','المهام','الأحكام','الأرشيف','النماذج','الذكاء الاصطناعي','المرفقات المحلية']
+            : plan === 'pro'
+            ? ['كل الميزات المجانية','مزامنة السحابة','رفع المرفقات','سجل التدقيق','تصدير Excel']
+            : ['كل ميزات Pro','تعدد المستخدمين','دعوة الأعضاء','نماذج مشتركة','تقارير متقدمة']
+          ).map((f) => (
+            <span key={f} style={{
+              padding: '2px 8px', borderRadius: 20,
+              background: 'var(--primary-light)',
+              color: 'var(--primary)',
+              fontSize: 11, fontWeight: 600,
+            }}>
+              ✓ {f}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Save button */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="btn-primary"
+        style={{ minWidth: 140, fontSize: 14 }}
+      >
+        {saving ? 'جاري الحفظ...' : saved ? '✅ تم الحفظ' : 'حفظ الإعدادات'}
+      </button>
     </div>
   );
 }

@@ -7,7 +7,17 @@
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 15mm 12mm;
+    direction: rtl;
+  }
+
+  @page :first {
+    margin-top: 20mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   body {
@@ -15,10 +25,13 @@
     font-family: 'Cairo', sans-serif;
     font-size: 13px;
     line-height: 1.8;
-    color: #000;
+    color: #000 !important;
     background: #fff !important;
+    margin: 0;
+    padding: 0;
   }
 
+  /* ── Hide all UI chrome ── */
   nav,
   .sidebar,
   .desktop-sidebar,
@@ -27,31 +40,26 @@
   .page-header button,
   .filter-chip,
   .badge-btn,
-  .print-hide {
+  .print-hide,
+  button:not(.print-show),
+  .ai-panel,
+  .case-side-panel,
+  .camera-upload,
+  [role="dialog"],
+  .modal-overlay {
     display: none !important;
   }
 
+  /* ── Show print-only elements ── */
   .print-only {
     display: block !important;
   }
 
-  tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  h1,
-  h2,
-  h3 {
-    page-break-after: avoid;
-    page-break-inside: avoid;
-    break-after: avoid;
-    break-inside: avoid;
-  }
-
-  a {
-    color: #000 !important;
-    text-decoration: none !important;
+  /* ── Layout ── */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 
   .card,
@@ -61,5 +69,98 @@
     text-shadow: none !important;
     border: 1px solid #d1d5db !important;
     background: #fff !important;
+    break-inside: avoid;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    direction: rtl;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 6px 10px !important;
+    text-align: right !important;
+    font-size: 12px;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f1f5f9 !important;
+    font-weight: 700;
+    color: #1e293b !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* ── Page breaks ── */
+  h1,
+  h2,
+  h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+    break-inside: avoid;
+    font-family: 'Cairo', sans-serif;
+    color: #000 !important;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+    break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+    break-after: always;
+  }
+
+  .no-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ── Typography ── */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* ── Print header (shown only when printing) ── */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #1e293b;
+    direction: rtl;
+  }
+
+  .print-header h1 {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e293b !important;
+    margin: 0 0 4px;
+  }
+
+  .print-header p {
+    font-size: 12px;
+    color: #64748b !important;
+    margin: 0;
+  }
+
+  /* ── Sessions print specific ── */
+  .sessions-print-table th,
+  .sessions-print-table td {
+    font-size: 11px;
+    padding: 5px 8px !important;
   }
 }

@@ -567,18 +567,52 @@ export default function CaseProceduresTab({
                 />
                 <input
                   className="form-input"
-                  placeholder="رابط المرفق (PDF / صورة / Word)"
-                  value={form.attachmentUrl}
+                  placeholder="رابط المرفق (PDF / صورة / Drive)"
+                  value={form.attachmentUrl && !form.attachmentUrl.startsWith('local://') ? form.attachmentUrl : ''}
                   onChange={(event) => setForm((prev) => ({ ...prev, attachmentUrl: event.target.value }))}
                 />
-                <button type="button" className="btn-secondary" onClick={addAttachmentToDraft}>إضافة</button>
+                <button type="button" className="btn-secondary" onClick={addAttachmentToDraft}>إضافة رابط</button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: 12, padding: '6px 10px' }}
+                  onClick={async () => {
+                    const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                    const file = await lfi.pickFile('application/pdf,.doc,.docx,image/*');
+                    if (!file) return;
+                    const localId = `prc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                    const saved = await lfi.saveFile(localId, file);
+                    if (!saved) { alert('فشل حفظ الملف'); return; }
+                    const next = {
+                      id: `proc_att_${Date.now()}`,
+                      title: form.attachmentTitle || file.name,
+                      url: '',
+                      localId,
+                      kind: 'local',
+                      addedAt: new Date().toISOString(),
+                    };
+                    setForm((prev) => ({
+                      ...prev,
+                      attachments: [...(Array.isArray(prev.attachments) ? prev.attachments : []), next],
+                      attachmentTitle: '',
+                      attachmentUrl: '',
+                    }));
+                  }}
+                >
+                  📁 رفع ملف محلي
+                </button>
+                {form.attachmentTitle && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>سيُستخدم "{form.attachmentTitle}" كاسم للملف</span>}
               </div>
 
               {(Array.isArray(form.attachments) && form.attachments.length > 0) ? (
                 <div style={{ display: 'grid', gap: 6 }}>
                   {form.attachments.map((entry) => (
                     <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-page)', borderRadius: 8, padding: '6px 10px' }}>
-                      <span style={{ fontSize: 12 }}>{entry.title}</span>
+                      <span style={{ fontSize: 12 }}>
+                        {entry.localId ? '💾 ' : '🔗 '}{entry.title}
+                      </span>
                       <button type="button" className="btn-secondary" style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => removeAttachmentFromDraft(entry.id)}>حذف</button>
                     </div>
                   ))}

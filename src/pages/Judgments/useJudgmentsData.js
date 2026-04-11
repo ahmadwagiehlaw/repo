@@ -127,7 +127,10 @@ export function useJudgmentsData({ formatUiDate }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
   const [viewMode, setViewMode] = useState('cards');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [addingJudgment, setAddingJudgment] = useState(null);
   const [formByCaseId, setFormByCaseId] = useState({});
   const [page, setPage] = useState(1);
@@ -204,7 +207,7 @@ export function useJudgmentsData({ formatUiDate }) {
 
   useEffect(() => {
     setPage(1);
-  }, [activeFilter, typeFilter, searchQuery, viewMode]);
+  }, [activeFilter, typeFilter, searchQuery, viewMode, dateFrom, dateTo, filterMonth]);
 
   const judgmentsByCaseId = useMemo(() => {
     const map = new Map();
@@ -221,6 +224,23 @@ export function useJudgmentsData({ formatUiDate }) {
 
     return cases.filter((caseItem) => {
       const caseJudgments = (judgmentsByCaseId.get(String(caseItem.id || '')) || []).slice();
+
+      // Date range filter
+      if (dateFrom || dateTo) {
+        const hasMatchingDate = caseJudgments.some((j) => {
+          const jDate = j.judgmentDate || j.pronouncementDate || '';
+          if (!jDate) return false;
+          if (dateFrom && jDate < dateFrom) return false;
+          if (dateTo && jDate > dateTo) return false;
+          return true;
+        });
+        const legacyDate = caseItem.lastSessionDate || '';
+        const legacyMatch = legacyDate
+          && (!dateFrom || legacyDate >= dateFrom)
+          && (!dateTo || legacyDate <= dateTo);
+        if (!hasMatchingDate && !legacyMatch) return false;
+      }
+
       const hasLegacyJudgment = Boolean(
         String(caseItem.summaryDecision || '').trim()
           || String(caseItem.judgmentPronouncement || '').trim()
@@ -237,6 +257,11 @@ export function useJudgmentsData({ formatUiDate }) {
         });
       }
       const isPlaintiff = Boolean(caseItem.flags?.isPlaintiff) || detectIsPlaintiff(caseItem.roleCapacity);
+
+      if (filterMonth) {
+        const hasMatchInMonth = caseJudgments.some((j) => (j.judgmentDate || '').startsWith(filterMonth));
+        if (!hasMatchInMonth) return false;
+      }
 
       if (activeFilter === 'reserved') {
         if (caseJudgments.length > 0) return false;
@@ -292,7 +317,7 @@ export function useJudgmentsData({ formatUiDate }) {
 
       return searchable.includes(query);
     });
-  }, [cases, judgmentsByCaseId, activeFilter, typeFilter, searchQuery, judgmentTypes]);
+  }, [cases, judgmentsByCaseId, activeFilter, typeFilter, searchQuery, judgmentTypes, dateFrom, dateTo, filterMonth]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCases.length / pageSize));
   const pagedCases = filteredCases.slice((page - 1) * pageSize, page * pageSize);
@@ -334,6 +359,7 @@ export function useJudgmentsData({ formatUiDate }) {
 
   const filteredTableJudgments = useMemo(() => {
     return judgments.filter((judgment) => {
+      if (filterMonth && !(judgment.judgmentDate || '').startsWith(filterMonth)) return false;
       if (activeFilter !== 'reserved' && typeFilter !== 'all') {
         const typeConfig = judgmentTypes.find((type) => type.value === typeFilter);
         const filterLabel = typeConfig ? typeConfig.label : typeFilter;
@@ -363,7 +389,7 @@ export function useJudgmentsData({ formatUiDate }) {
         .toLowerCase()
         .includes(query);
     });
-  }, [judgments, activeFilter, typeFilter, searchQuery, judgmentTypes]);
+  }, [judgments, activeFilter, typeFilter, searchQuery, judgmentTypes, filterMonth]);
 
   const getTypeConfig = (value) => {
     return judgmentTypes.find((type) => type.value === value)
@@ -666,6 +692,8 @@ export function useJudgmentsData({ formatUiDate }) {
     activeFilter,
     typeFilter,
     searchQuery,
+    filterMonth,
+    setFilterMonth,
     viewMode,
     addingJudgment,
     formByCaseId,
@@ -681,6 +709,10 @@ export function useJudgmentsData({ formatUiDate }) {
     setActiveFilter,
     setTypeFilter,
     setSearchQuery,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     setViewMode,
     setAddingJudgment,
     setPage,

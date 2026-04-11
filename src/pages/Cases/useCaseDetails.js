@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCases } from '@/contexts/CaseContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -10,12 +10,12 @@ import { getDerivedCaseSessionType } from '@/utils/caseCanonical.js';
 
 const DEFAULT_BLOCK_TYPES = [
   { id: 'facts', label: 'الوقائع', icon: '📖', color: '#3b82f6', bg: '#dbeafe' },
-  { id: 'grounds', label: 'أسباب الطعن', icon: '▪', color: '#f59e0b', bg: '#fef3c7' },
+  { id: 'grounds', label: 'أسباب الطعن', icon: '⚠️', color: '#f59e0b', bg: '#fef3c7' },
   { id: 'response', label: 'الرد', icon: '💬', color: '#10b981', bg: '#d1fae5' },
   { id: 'defense', label: 'الدفاع', icon: '🛡️', color: '#8b5cf6', bg: '#f3e8ff' },
-  { id: 'position', label: 'الموقف', icon: '👔', color: '#ef4444', bg: '#fee2e2' },
+  { id: 'position', label: 'الموقف', icon: '👁️', color: '#ef4444', bg: '#fee2e2' },
   { id: 'notes', label: 'ملاحظات', icon: '📝', color: '#6b7280', bg: '#f3f4f6' },
-  { id: 'custom', label: 'مخصص', icon: '⭐', color: '#ec4899', bg: '#fce7f3' },
+  { id: 'custom', label: 'مخصص', icon: '★', color: '#ec4899', bg: '#fce7f3' },
 ];
 
 const DEFAULT_TECHNICAL_PROCEDURE_OPTIONS = [
@@ -188,6 +188,29 @@ export default function useCaseDetails() {
 
     loadData();
   }, [workspaceId, caseId, getCase]);
+  const refreshCaseData = useCallback(async () => {
+    if (!workspaceId || !caseId) return;
+
+    try {
+      setLoading(true);
+      const caseRecord = await getCase(workspaceId, caseId);
+      if (caseRecord) {
+        setCaseData(caseRecord);
+
+        const [tasksData, judgementsData] = await Promise.all([
+          storage.listTasks ? storage.listTasks(workspaceId, { caseId, limit: 100 }) : Promise.resolve([]),
+          storage.listJudgments ? storage.listJudgments(workspaceId, { limit: 100 }) : Promise.resolve([]),
+        ]).catch(() => [[], []]);
+
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
+        setJudgments(Array.isArray(judgementsData) ? judgementsData.filter((judgment) => judgment.caseId === caseId) : []);
+      }
+    } catch (error) {
+      console.error('Error refreshing case:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId, caseId, getCase]);
 
   const saveBlocks = useCallback(async () => {
     if (!workspaceId || !caseId) return;
@@ -284,6 +307,77 @@ export default function useCaseDetails() {
     }
   }, [tasks, workspaceId]);
 
+  const handleAddLocalFile = useCallback(async () => {
+    try {
+      const { default: localFileIndex } = await import('@/services/LocalFileIndex.js');
+      const file = await localFileIndex.pickFile(
+        'image/*,application/pdf,.doc,.docx,.xls,.xlsx'
+      );
+      if (!file) return;
+      const localId = `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const saved = await localFileIndex.saveFile(localId, file);
+      if (!saved) {
+        alert('فشل حفظ الملف محلياً');
+        return;
+      }
+      const newAttachments = [...(caseData.attachments || []), {
+        url: '',
+        title: file.name,
+        localId,
+        kind: 'local',
+        addedAt: new Date().toISOString(),
+      }];
+      await storage.updateCase(workspaceId, caseId, { attachments: newAttachments });
+      setCaseData((prev) => (prev ? { ...prev, attachments: newAttachments } : null));
+    } catch (error) {
+      console.error('Error adding local file:', error);
+    }
+  }, [caseData, workspaceId, caseId]);
+
+
+  const handleSaveAttachment = useCallback(async (record) => {
+    if (!record) return;
+    try {
+      setSavingTask(true);
+      const newAttachments = [...(caseData.attachments || []), record];
+      await storage.updateCase(workspaceId, caseId, { attachments: newAttachments });
+      setCaseData((prev) => (prev ? { ...prev, attachments: newAttachments } : null));
+
+      // Pro: enqueue cloud sync in background (non-blocking)
+      if (record.localId) {
+        import('@/services/CloudSyncService.js').then(({ default: cloudSync }) => {
+          cloudSync.enqueue(workspaceId, caseId, record.id, record.localId);
+        });
+      }
+
+      // Auto-log if attachment type requires it
+      if (record.autoLogged && record.logTemplate) {
+        const logEntry = {
+          date: record.sessionDate || new Date().toISOString().split('T')[0],
+          action: record.logTemplate,
+          attachmentId: record.id,
+          attachmentType: record.attachmentType,
+          createdAt: new Date().toISOString(),
+        };
+        const currentHistory = Array.isArray(caseData.sessionsHistory)
+          ? caseData.sessionsHistory
+          : [];
+        await storage.updateCase(workspaceId, caseId, {
+          sessionsHistory: [...currentHistory, logEntry],
+        });
+        setCaseData((prev) => prev ? {
+          ...prev,
+          sessionsHistory: [...(prev.sessionsHistory || []), logEntry],
+        } : null);
+      }
+    } catch (error) {
+      console.error('Error saving attachment:', error);
+      alert('حدث خطأ أثناء حفظ المرفق');
+    } finally {
+      setSavingTask(false);
+    }
+  }, [caseData, workspaceId, caseId]);
+
   const handleAddAttachment = useCallback(async () => {
     if (!newAttachmentUrl.trim()) {
       alert('الرابط/الملف مطلوب');
@@ -321,7 +415,15 @@ export default function useCaseDetails() {
 
     try {
       setSavingTask(true);
-      const newAttachments = (caseData.attachments || []).filter((_, attachmentIndex) => attachmentIndex !== index);
+      const attachmentToDelete = (caseData.attachments || [])[index];
+      // Clean local IndexedDB if local file
+      if (attachmentToDelete?.localId) {
+        const { default: localFileIndex } = await import('@/services/LocalFileIndex.js');
+        await localFileIndex.removeFile(attachmentToDelete.localId);
+      }
+      const newAttachments = (caseData.attachments || []).filter(
+        (_, attachmentIndex) => attachmentIndex !== index
+      );
       await storage.updateCase(workspaceId, caseId, { attachments: newAttachments });
       setCaseData((prev) => (prev ? { ...prev, attachments: newAttachments } : null));
     } catch (error) {
@@ -597,9 +699,11 @@ export default function useCaseDetails() {
     saveBlocks,
     updateBlockTypes,
     handleSaveTask,
+    handleAddLocalFile,
     handleDeleteTask,
     handleToggleTaskComplete,
     handleAddAttachment,
+    handleSaveAttachment,
     handleDeleteAttachment,
     handleAddSession,
     handleAddJudgment,
@@ -609,5 +713,8 @@ export default function useCaseDetails() {
     addCaseProcedure,
     deleteCaseProcedure,
     lastSession,
+    workspaceId,
+    refreshCaseData,
   };
 }
+

@@ -84,7 +84,7 @@ export class SessionRollover {
 
   async execute(workspaceId, session, options = {}, caseData = null) {
     if (!workspaceId || !session?.id) {
-      throw new Error('workspaceId وbيانات الجلسة مطلوبان');
+      throw new Error('workspaceId وبيانات الجلسة مطلوبان');
     }
 
     const results = {

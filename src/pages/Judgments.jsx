@@ -20,6 +20,8 @@ export default function Judgments() {
     activeFilter,
     typeFilter,
     searchQuery,
+    filterMonth,
+    setFilterMonth,
     viewMode,
     addingJudgment,
     page,
@@ -33,6 +35,10 @@ export default function Judgments() {
     setActiveFilter,
     setTypeFilter,
     setSearchQuery,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     setViewMode,
     setAddingJudgment,
     setPage,
@@ -120,6 +126,43 @@ export default function Judgments() {
             borderBottom: activeFilter !== 'reserved' ? '1px solid var(--border-light)' : 'none',
           }}
         >
+          {/* Date Range Filter */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+              📅 من:
+            </span>
+            <input
+              type="date"
+              className="form-input"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              style={{ width: 155, fontSize: 12 }}
+            />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+              إلى:
+            </span>
+            <input
+              type="date"
+              className="form-input"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              style={{ width: 155, fontSize: 12 }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                type="button"
+                onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                style={{
+                  background: '#fee2e2', border: 'none', borderRadius: 6,
+                  color: '#dc2626', cursor: 'pointer', fontSize: 11,
+                  padding: '4px 10px', fontFamily: 'Cairo', fontWeight: 700,
+                }}
+              >
+                ✕ مسح التاريخ
+              </button>
+            )}
+          </div>
+
           {/* Main Filters */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {[
@@ -147,6 +190,23 @@ export default function Judgments() {
 
           {/* Search & Action Toggles */}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="month"
+                className="form-input"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                style={{ width: 140, fontSize: 13 }}
+                title="تصفية بشهر وسنة الحكم"
+              />
+              {filterMonth && (
+                <button 
+                  onClick={() => setFilterMonth('')} 
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}
+                  title="إلغاء الفلتر"
+                >✕</button>
+              )}
+            </div>
             <input
               className="form-input"
               placeholder="بحث برقم الدعوى أو الخصوم..."

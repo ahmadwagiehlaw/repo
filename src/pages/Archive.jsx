@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import storage from '@/data/Storage.js';
 import { formatDisplayDate } from '@/utils/caseUtils.js';
 import { confirmDialog } from '@/utils/browserFeedback.js';
+
 
 const ARCHIVE_SECTIONS = [
   { id: 'all', label: 'كل الأقسام', icon: '📁' },
@@ -55,6 +56,7 @@ export default function Archive() {
   const [sessionTypeOptions, setSessionTypeOptions] = useState(DEFAULT_SESSION_TYPE_OPTIONS);
   const [showSessionTypeManager, setShowSessionTypeManager] = useState(false);
   const [newSessionType, setNewSessionType] = useState('');
+  const [archiveViewMode, setArchiveViewMode] = useState('list');
 
   const [rollForm, setRollForm] = useState({
     title: '',
@@ -97,6 +99,8 @@ export default function Archive() {
     judgmentDate: '',
     judgmentType: '',
     linkedCaseId: '',
+    localId: '',
+    localName: '',
   });
 
   const loadDocuments = async () => {
@@ -231,7 +235,7 @@ export default function Archive() {
 
   const handleCreateSessionRoll = async () => {
     if (!workspaceId) return;
-    if (!rollForm.sessionDate || !rollForm.fileUrl) {
+    if (!rollForm.sessionDate || (!rollForm.fileUrl && !rollForm.localId)) {
       alert('تاريخ الجلسة ورابط الملف مطلوبان');
       return;
     }
@@ -260,7 +264,7 @@ export default function Archive() {
 
   const handleCreateJudgmentRoll = async () => {
     if (!workspaceId) return;
-    if (!judgmentRollForm.judgmentDate || !judgmentRollForm.fileUrl) {
+    if (!judgmentRollForm.judgmentDate || (!judgmentRollForm.fileUrl && !judgmentRollForm.localId)) {
       alert('تاريخ الحكم ورابط الملف مطلوبان');
       return;
     }
@@ -320,21 +324,25 @@ export default function Archive() {
       judgmentDate: doc.judgmentDate || '',
       judgmentType: doc.judgmentType || '',
       linkedCaseId: doc.linkedCaseId || '',
+      localId: doc.localId || '',
+      localName: doc.localName || '',
     });
   };
 
   const saveEditModal = async () => {
     if (!workspaceId || !editingDoc?.id) return;
-    if (!editForm.fileUrl.trim()) {
-      alert('رابط الملف مطلوب');
+    if (!editForm.fileUrl.trim() && !editForm.localId) {
+      alert('يرجى رفع ملف أو إدخال رابط');
       return;
     }
 
     const updates = {
       title: editForm.title,
-      fileUrl: editForm.fileUrl,
+      fileUrl: editForm.fileUrl || '',
       notes: editForm.notes,
       court: editForm.court,
+      localId: editForm.localId || '',
+      localName: editForm.localName || '',
     };
 
     if (editingDoc.section === 'session_rolls') {
@@ -396,16 +404,30 @@ export default function Archive() {
 
       {activeSection === 'session_rolls' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <h3 style={{ margin: 0, fontSize: 15 }}>📅 رولات الجلسات</h3>
-            <button className="btn-primary" onClick={() => setShowSessionRollForm((s) => !s)}>
-              {showSessionRollForm ? 'إغلاق الإضافة' : '+ إضافة رول جلسة'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  onClick={() => setArchiveViewMode('grid')}
+                  title="شبكة"
+                  style={{ padding: '5px 9px', borderRadius: 7, cursor: 'pointer', fontSize: 15, border: archiveViewMode === 'grid' ? '2px solid var(--primary)' : '1px solid var(--border)', background: archiveViewMode === 'grid' ? 'var(--primary-light)' : 'white', color: archiveViewMode === 'grid' ? 'var(--primary)' : 'var(--text-secondary)' }}
+                >⊞</button>
+                <button
+                  onClick={() => setArchiveViewMode('list')}
+                  title="قائمة"
+                  style={{ padding: '5px 9px', borderRadius: 7, cursor: 'pointer', fontSize: 15, border: archiveViewMode === 'list' ? '2px solid var(--primary)' : '1px solid var(--border)', background: archiveViewMode === 'list' ? 'var(--primary-light)' : 'white', color: archiveViewMode === 'list' ? 'var(--primary)' : 'var(--text-secondary)' }}
+                >☰</button>
+              </div>
+              <button className="btn-primary" onClick={() => setShowSessionRollForm((s) => !s)}>
+                {showSessionRollForm ? 'إغلاق الإضافة' : '+ إضافة رول جلسة'}
+              </button>
+            </div>
           </div>
 
           {showSessionRollForm && (
             <div className="card" style={{ marginBottom: 16 }}>
-              <h3 style={{ margin: '0 0 14px', fontSize: 15 }}>📤 رفع رول جلسة</h3>
+              <h3 style={{ margin: '0 0 14px', fontSize: 15 }}>📅 رفع رول جلسة</h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div className="form-group">
@@ -447,41 +469,43 @@ export default function Archive() {
                 />
               </div>
 
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8 }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>نوع الجلسة</label>
+              <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                <label className="form-label">رابط الملف أو رفع محلي *</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    className="form-input"
+                    value={rollForm.fileUrl && !rollForm.fileUrl.startsWith('local://') ? rollForm.fileUrl : ''}
+                    onChange={(e) => setRollForm((f) => ({ ...f, fileUrl: e.target.value, localId: '', localName: '' }))}
+                    placeholder="https://drive.google.com/file/d/..."
+                    style={{ flex: 1, minWidth: 180 }}
+                  />
                   <button
                     type="button"
                     className="btn-secondary"
-                    style={{ fontSize: 12, padding: '4px 10px' }}
-                    onClick={() => setShowSessionTypeManager(true)}
+                    style={{ padding: '8px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                    onClick={async () => {
+                      const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                      const file = await lfi.pickFile('application/pdf,.doc,.docx,image/*');
+                      if (!file) return;
+                      const localId = `arc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                      const saved = await lfi.saveFile(localId, file);
+                      if (saved) setRollForm((f) => ({ ...f, fileUrl: `local://${localId}`, localId, localName: file.name }));
+                    }}
                   >
-                    + تعديل الاختيارات
+                    📁 رفع محلي
                   </button>
                 </div>
-                <select
-                  className="form-input"
-                  value={rollForm.sessionType}
-                  onChange={(e) => setRollForm((f) => ({ ...f, sessionType: e.target.value }))}
-                >
-                  <option value="">اختر النوع...</option>
-                  {sessionTypeOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                <label className="form-label">رابط الملف (Google Drive) *</label>
-                <input
-                  className="form-input"
-                  value={rollForm.fileUrl}
-                  onChange={(e) => setRollForm((f) => ({ ...f, fileUrl: e.target.value }))}
-                  placeholder="https://drive.google.com/file/d/..."
-                />
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  افتح الملف في Drive ← مشاركة ← نسخ الرابط ← الصقه هنا
-                </div>
+                {rollForm.localId ? (
+                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    💾 {rollForm.localName || 'ملف محفوظ محلياً'}
+                    <button type="button" onClick={() => setRollForm((f) => ({ ...f, fileUrl: '', localId: '', localName: '' }))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    افتح الملف في Drive ← مشاركة ← نسخ الرابط ← الصقه هنا
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ gridColumn: '1/-1' }}>
@@ -496,12 +520,75 @@ export default function Archive() {
               </div>
               </div>
 
-              <button className="btn-primary" style={{ marginTop: 8 }} onClick={handleCreateSessionRoll}>📤 رفع الرول</button>
+              <button className="btn-primary" style={{ marginTop: 8 }} onClick={handleCreateSessionRoll}>📅 رفع الرول</button>
             </div>
           )}
 
           {rollsByMonth.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>لا توجد رولات جلسات بعد</div>
+            <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+              <div>لا توجد رولات جلسات بعد</div>
+            </div>
+          ) : archiveViewMode === 'grid' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {rollsByMonth.flatMap(g => g.rolls).map((roll) => {
+                const isLocal = Boolean(roll.localId);
+                const [y, m, d] = String(roll.sessionDate || roll.uploadDate || '').split('-');
+                return (
+                  <div key={roll.id} style={{
+                    borderRadius: 12, overflow: 'hidden',
+                    border: '1px solid #bfdbfe',
+                    background: 'white',
+                    boxShadow: '0 2px 8px rgba(59,130,246,0.08)',
+                    display: 'flex', flexDirection: 'column',
+                    transition: 'all 0.2s',
+                    cursor: 'pointer',
+                  }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(59,130,246,0.15)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(59,130,246,0.08)'; }}
+                  >
+                    <div style={{ background: 'linear-gradient(135deg,#dbeafe,#eff6ff)', padding: '16px 12px', textAlign: 'center', borderBottom: '1px solid #bfdbfe' }}>
+                      <div style={{ fontSize: 32 }}>📅</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#1d4ed8', marginTop: 4 }}>{d || '—'}</div>
+                      <div style={{ fontSize: 12, color: '#3b82f6' }}>
+                        {m ? new Date(0, Number(m) - 1).toLocaleDateString('ar-EG', { month: 'long' }) : ''} {y || ''}
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px 12px', flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>{roll.title || 'رول جلسة'}</div>
+                      {roll.court && <div style={{ fontSize: 11, color: '#64748b' }}>🏛️ {roll.court}</div>}
+                      {roll.sessionType && <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 2 }}>📋 {mapSessionTypeLabel(roll.sessionType)}</div>}
+                      {isLocal && <div style={{ fontSize: 10, color: '#10b981', marginTop: 4, fontWeight: 600 }}>💾 محفوظ محلياً</div>}
+                    </div>
+                    <div style={{ padding: '8px 10px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={async () => {
+                          if (isLocal) {
+                            const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                            const result = await lfi.openFile(roll.localId);
+                            if (result) { const w = window.open('','_blank'); w.document.write(`<iframe src="${result.url}" style="width:100%;height:100vh;border:none"></iframe>`); }
+                          } else { window.open(roll.fileUrl, '_blank'); }
+                        }}
+                        className="btn-primary" style={{ flex: 1, fontSize: 11, padding: '5px' }}>
+                        📄 فتح
+                      </button>
+                      <button className="btn-secondary" style={{ fontSize: 11, padding: '5px 8px' }} onClick={() => openEditModal(roll)}>✏️</button>
+                      <button
+                        onClick={async () => {
+                          const proceed = await confirmDialog('حذف هذا الرول؟', { title: 'تأكيد الحذف', confirmLabel: 'حذف', cancelLabel: 'إلغاء', danger: true });
+                          if (!proceed) return;
+                          if (roll.localId) { const { default: lfi } = await import('@/services/LocalFileIndex.js'); await lfi.removeFile(roll.localId); }
+                          await storage.deleteArchiveDocument(workspaceId, roll.id);
+                          await loadDocuments();
+                        }}
+                        style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#dc2626', fontSize: 11 }}>
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             rollsByMonth.map((group) => (
               <div key={group.key} style={{ marginBottom: 20 }}>
@@ -566,8 +653,19 @@ export default function Archive() {
                         </div>
 
                         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                          <button onClick={() => window.open(roll.fileUrl, '_blank')} className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>
-                            📄 فتح الرول
+                          <button
+                            onClick={async () => {
+                              if (roll.localId) {
+                                const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                                const result = await lfi.openFile(roll.localId);
+                                if (result) { const w = window.open('', '_blank'); w.document.write(`<iframe src="${result.url}" style="width:100%;height:100vh;border:none"></iframe>`); }
+                                else alert('الملف غير متاح محلياً');
+                              } else {
+                                window.open(roll.fileUrl, '_blank');
+                              }
+                            }}
+                            className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>
+                            {roll.localId ? '💾 فتح' : '📄 فتح الرول'}
                           </button>
                           <button className="btn-secondary" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => openEditModal(roll)}>
                             ✏️ تعديل
@@ -718,11 +816,25 @@ export default function Archive() {
 
       {activeSection === 'judgment_rolls' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <h3 style={{ margin: 0, fontSize: 15 }}>⚖️ رولات الأحكام</h3>
-            <button className="btn-primary" onClick={() => setShowJudgmentRollForm((s) => !s)}>
-              {showJudgmentRollForm ? 'إغلاق الإضافة' : '+ إضافة رول حكم'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  onClick={() => setArchiveViewMode('grid')}
+                  title="شبكة"
+                  style={{ padding: '5px 9px', borderRadius: 7, cursor: 'pointer', fontSize: 15, border: archiveViewMode === 'grid' ? '2px solid var(--primary)' : '1px solid var(--border)', background: archiveViewMode === 'grid' ? 'var(--primary-light)' : 'white', color: archiveViewMode === 'grid' ? 'var(--primary)' : 'var(--text-secondary)' }}
+                >⊞</button>
+                <button
+                  onClick={() => setArchiveViewMode('list')}
+                  title="قائمة"
+                  style={{ padding: '5px 9px', borderRadius: 7, cursor: 'pointer', fontSize: 15, border: archiveViewMode === 'list' ? '2px solid var(--primary)' : '1px solid var(--border)', background: archiveViewMode === 'list' ? 'var(--primary-light)' : 'white', color: archiveViewMode === 'list' ? 'var(--primary)' : 'var(--text-secondary)' }}
+                >☰</button>
+              </div>
+              <button className="btn-primary" onClick={() => setShowJudgmentRollForm((s) => !s)}>
+                {showJudgmentRollForm ? 'إغلاق الإضافة' : '+ إضافة رول حكم'}
+              </button>
+            </div>
           </div>
 
           {showJudgmentRollForm && (
@@ -783,13 +895,43 @@ export default function Archive() {
               </div>
 
               <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                <label className="form-label">رابط الملف (Google Drive) *</label>
-                <input
-                  className="form-input"
-                  value={judgmentRollForm.fileUrl}
-                  onChange={(e) => setJudgmentRollForm((f) => ({ ...f, fileUrl: e.target.value }))}
-                  placeholder="https://drive.google.com/file/d/..."
-                />
+                <label className="form-label">رابط الملف أو رفع محلي *</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    className="form-input"
+                    value={judgmentRollForm.fileUrl && !judgmentRollForm.fileUrl.startsWith('local://') ? judgmentRollForm.fileUrl : ''}
+                    onChange={(e) => setJudgmentRollForm((f) => ({ ...f, fileUrl: e.target.value, localId: '', localName: '' }))}
+                    placeholder="https://drive.google.com/file/d/..."
+                    style={{ flex: 1, minWidth: 180 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '8px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                    onClick={async () => {
+                      const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                      const file = await lfi.pickFile('application/pdf,.doc,.docx,image/*');
+                      if (!file) return;
+                      const localId = `jrc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                      const saved = await lfi.saveFile(localId, file);
+                      if (saved) setJudgmentRollForm((f) => ({ ...f, fileUrl: `local://${localId}`, localId, localName: file.name }));
+                    }}
+                  >
+                    📁 رفع محلي
+                  </button>
+                </div>
+                {judgmentRollForm.localId ? (
+                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    💾 {judgmentRollForm.localName || 'ملف محفوظ محلياً'}
+                    <button type="button"
+                      onClick={() => setJudgmentRollForm((f) => ({ ...f, fileUrl: '', localId: '', localName: '' }))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    افتح الملف في Drive ← مشاركة ← نسخ الرابط ← الصقه هنا
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ gridColumn: '1/-1' }}>
@@ -807,7 +949,69 @@ export default function Archive() {
           )}
 
           {judgmentRollsByMonth.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>لا توجد رولات أحكام بعد</div>
+            <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>⚖️</div>
+              <div>لا توجد رولات أحكام بعد</div>
+            </div>
+          ) : archiveViewMode === 'grid' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {judgmentRollsByMonth.flatMap(g => g.rolls).map((roll) => {
+                const isLocal = Boolean(roll.localId);
+                const [y, m, d] = String(roll.judgmentDate || roll.uploadDate || '').split('-');
+                return (
+                  <div key={roll.id} style={{
+                    borderRadius: 12, overflow: 'hidden',
+                    border: '1px solid #e9d5ff',
+                    background: 'white',
+                    boxShadow: '0 2px 8px rgba(124,58,237,0.08)',
+                    display: 'flex', flexDirection: 'column',
+                    transition: 'all 0.2s',
+                  }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(124,58,237,0.15)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(124,58,237,0.08)'; }}
+                  >
+                    <div style={{ background: 'linear-gradient(135deg,#ede9fe,#faf5ff)', padding: '16px 12px', textAlign: 'center', borderBottom: '1px solid #e9d5ff' }}>
+                      <div style={{ fontSize: 32 }}>⚖️</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#7c3aed', marginTop: 4 }}>{d || '—'}</div>
+                      <div style={{ fontSize: 12, color: '#8b5cf6' }}>
+                        {m ? new Date(0, Number(m) - 1).toLocaleDateString('ar-EG', { month: 'long' }) : ''} {y || ''}
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px 12px', flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>{roll.title || 'رول حكم'}</div>
+                      {roll.court && <div style={{ fontSize: 11, color: '#64748b' }}>🏛️ {roll.court}</div>}
+                      {roll.judgmentType && <div style={{ fontSize: 11, color: '#7c3aed', marginTop: 2 }}>📋 {mapJudgmentTypeLabel(roll.judgmentType)}</div>}
+                      {isLocal && <div style={{ fontSize: 10, color: '#10b981', marginTop: 4, fontWeight: 600 }}>💾 محفوظ محلياً</div>}
+                    </div>
+                    <div style={{ padding: '8px 10px', borderTop: '1px solid #f3e8ff', display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={async () => {
+                          if (isLocal) {
+                            const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                            const result = await lfi.openFile(roll.localId);
+                            if (result) { const w = window.open('','_blank'); w.document.write(`<iframe src="${result.url}" style="width:100%;height:100vh;border:none"></iframe>`); }
+                          } else { window.open(roll.fileUrl, '_blank'); }
+                        }}
+                        className="btn-primary" style={{ flex: 1, fontSize: 11, padding: '5px', background: '#7c3aed', border: 'none' }}>
+                        ⚖️ فتح
+                      </button>
+                      <button className="btn-secondary" style={{ fontSize: 11, padding: '5px 8px' }} onClick={() => openEditModal(roll)}>✏️</button>
+                      <button
+                        onClick={async () => {
+                          const proceed = await confirmDialog('حذف هذا الرول؟', { title: 'تأكيد الحذف', confirmLabel: 'حذف', cancelLabel: 'إلغاء', danger: true });
+                          if (!proceed) return;
+                          if (roll.localId) { const { default: lfi } = await import('@/services/LocalFileIndex.js'); await lfi.removeFile(roll.localId); }
+                          await storage.deleteArchiveDocument(workspaceId, roll.id);
+                          await loadDocuments();
+                        }}
+                        style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: '#dc2626', fontSize: 11 }}>
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             judgmentRollsByMonth.map((group) => (
               <div key={group.key} style={{ marginBottom: 20 }}>
@@ -829,7 +1033,20 @@ export default function Archive() {
                           {roll.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{roll.notes}</div>}
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => window.open(roll.fileUrl, '_blank')} className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>📄 فتح الرول</button>
+                          <button
+                            onClick={async () => {
+                              if (roll.localId) {
+                                const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                                const result = await lfi.openFile(roll.localId);
+                                if (result) { const w = window.open('', '_blank'); w.document.write(`<iframe src="${result.url}" style="width:100%;height:100vh;border:none"></iframe>`); }
+                                else alert('الملف غير متاح محلياً');
+                              } else {
+                                window.open(roll.fileUrl, '_blank');
+                              }
+                            }}
+                            className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>
+                            {roll.localId ? '💾 فتح' : '📄 الفتح'}
+                          </button>
                           <button className="btn-secondary" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => openEditModal(roll)}>
                             ✏️ تعديل
                           </button>
@@ -1028,15 +1245,59 @@ export default function Archive() {
                     </select>
                   </div>
                   <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                    <label className="form-label">Linked Case ID</label>
+                    <label className="form-label">رقم القضية المرتبطة</label>
                     <input className="form-input" value={editForm.linkedCaseId} onChange={(e) => setEditForm((f) => ({ ...f, linkedCaseId: e.target.value }))} />
                   </div>
                 </>
               )}
 
               <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                <label className="form-label">رابط الملف *</label>
-                <input className="form-input" value={editForm.fileUrl} onChange={(e) => setEditForm((f) => ({ ...f, fileUrl: e.target.value }))} />
+                <label className="form-label">الملف *</label>
+                {editForm.localId ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                    <span style={{ fontSize: 20 }}>💾</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1d4ed8' }}>{editForm.localName || 'ملف محفوظ محلياً'}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>محفوظ محلياً</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                        await lfi.removeFile(editForm.localId);
+                        setEditForm((f) => ({ ...f, localId: '', localName: '', fileUrl: '' }));
+                      }}
+                      style={{ background: '#fee2e2', border: 'none', borderRadius: 6, color: '#dc2626', cursor: 'pointer', fontSize: 12, padding: '4px 10px', fontFamily: 'Cairo' }}
+                    >
+                      🗑 حذف الملف
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '10px', borderRadius: 8, border: '2px dashed #3b82f6', background: '#eff6ff', color: '#1d4ed8', fontFamily: 'Cairo', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}
+                      onClick={async () => {
+                        const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                        const file = await lfi.pickFile('application/pdf,.doc,.docx,image/*');
+                        if (!file) return;
+                        const localId = `arc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                        const saved = await lfi.saveFile(localId, file);
+                        if (saved) setEditForm((f) => ({ ...f, localId, localName: file.name, fileUrl: `local://${localId}` }));
+                      }}
+                    >
+                      📁 رفع ملف جديد من جهازك
+                    </button>
+                    <div style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>أو أدخل رابط</div>
+                    <input
+                      className="form-input"
+                      value={editForm.fileUrl && !editForm.fileUrl.startsWith('local://') ? editForm.fileUrl : ''}
+                      onChange={(e) => setEditForm((f) => ({ ...f, fileUrl: e.target.value, localId: '', localName: '' }))}
+                      placeholder="https://drive.google.com/..."
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ gridColumn: '1/-1' }}>

@@ -182,13 +182,49 @@ export default function JudgmentForm({
         </div>
 
         <div className="form-group">
-          <label className="form-label">مرفق الحكم (رابط Drive)</label>
-          <input
-            className="form-input"
-            value={form.attachmentUrl || ''}
-            onChange={(e) => onFieldChange('attachmentUrl', e.target.value)}
-            placeholder="https://drive.google.com/..."
-          />
+          <label className="form-label">مرفق الحكم</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              className="form-input"
+              value={form.attachmentUrl || ''}
+              onChange={(e) => onFieldChange('attachmentUrl', e.target.value)}
+              placeholder="https://drive.google.com/..."
+              style={{ flex: 1, minWidth: 180 }}
+            />
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '8px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+              onClick={async () => {
+                const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                const file = await lfi.pickFile('application/pdf,.doc,.docx,image/*');
+                if (!file) return;
+                const localId = `jdg-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                const saved = await lfi.saveFile(localId, file);
+                if (saved) {
+                  onFieldChange('attachmentUrl', `local://${localId}`);
+                  onFieldChange('attachmentLocalId', localId);
+                  onFieldChange('attachmentName', file.name);
+                }
+              }}
+            >
+              📁 رفع محلي
+            </button>
+            {form.attachmentLocalId && (
+              <span style={{ fontSize: 11, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 4 }}>
+                💾 {form.attachmentName || 'ملف محفوظ'}
+                <button type="button"
+                  onClick={() => {
+                    onFieldChange('attachmentUrl', '');
+                    onFieldChange('attachmentLocalId', '');
+                    onFieldChange('attachmentName', '');
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="form-group">

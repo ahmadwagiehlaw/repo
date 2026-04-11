@@ -4,7 +4,7 @@ import DateDisplay from '@/components/common/DateDisplay.jsx';
 import { openCasePanel } from '@/utils/openCasePanel.js';
 
 export const ALL_COLUMNS = [
-  { key: 'rollNumber', label: 'الرول', width: 70, sortable: true },
+  { key: 'rollNumber', label: 'الرول', width: 70, sortable: true, editable: true },
   { key: 'caseNumber', label: 'رقم الدعوى', width: 120, sortable: true },
   { key: 'clientName', label: 'المدعي', width: 160, sortable: true },
   { key: 'defendantName', label: 'المدعى عليه', width: 160, sortable: true },
@@ -219,7 +219,7 @@ export default function SessionsList({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {col.key === 'rollNumber' ? (
+                    {col.key === 'rollNumber' && !editMode ? (
                       <div style={{ width: colWidths.rollNumber || 70, textAlign: 'center' }}>
                         {session.rollNumber ? (
                           <span style={{
@@ -245,7 +245,7 @@ export default function SessionsList({
                         onClick={() => openCasePanel(session.caseId)}
                         style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: 700 }}
                       />
-                    ) : isEditableColumn(col.key) ? (
+                    ) : isEditableColumn(col.key) || (col.key === 'rollNumber' && editMode) ? (
                       <>
                         <input
                           list={col.key === 'decision' || col.key === 'sessionType' ? `options-${col.key}-${session.id}` : undefined}
@@ -289,13 +289,35 @@ export default function SessionsList({
                             }}
                             style={{
                               cursor: editMode ? 'default' : 'pointer',
-                              color: linkedDoc?.fileUrl ? 'var(--primary)' : 'inherit',
-                              fontWeight: linkedDoc?.fileUrl ? 700 : 400,
+                              color: (linkedDoc?.fileUrl || linkedDoc?.localId) ? 'var(--primary)' : 'inherit',
+                              fontWeight: (linkedDoc?.fileUrl || linkedDoc?.localId) ? 700 : 400,
                             }}
                           >
                             <DateDisplay value={session[col.key]} options={dateDisplayOptions} />
-                            {linkedDoc?.fileUrl ? ' 📎' : ''}
-                            {dateTooltip === session[col.key] ? (
+                            {(linkedDoc?.fileUrl || linkedDoc?.localId) ? (
+                              <span
+                                title={linkedDoc?.title || 'رول مرتبط'}
+                                style={{ marginRight: 4, cursor: 'pointer' }}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (linkedDoc.localId) {
+                                    const { default: lfi } = await import('@/services/LocalFileIndex.js');
+                                    const result = await lfi.openFile(linkedDoc.localId);
+                                    if (result) {
+                                      const w = window.open('', '_blank');
+                                      w.document.write(`<iframe src="${result.url}" style="width:100%;height:100vh;border:none"></iframe>`);
+                                    } else {
+                                      alert('الملف غير متاح محلياً');
+                                    }
+                                  } else {
+                                    window.open(linkedDoc.fileUrl, '_blank');
+                                  }
+                                }}
+                              >
+                                {linkedDoc?.localId ? ' 💾' : ' 📎'}
+                              </span>
+                            ) : null}
+                            {dateTooltip === session[col.key] && !(linkedDoc?.fileUrl || linkedDoc?.localId) ? (
                               <span style={{ marginRight: 6, color: '#dc2626', fontSize: 11 }}>
                                 لا يوجد رول مرتبط بهذا التاريخ
                               </span>

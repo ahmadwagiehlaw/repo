@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CaseAttachmentsTab from '@/pages/Cases/CaseAttachmentsTab.jsx';
 import CaseDocumentsTab from '@/pages/Cases/CaseDocumentsTab.jsx';
@@ -14,97 +14,14 @@ import useCaseDetails from '@/pages/Cases/useCaseDetails.js';
 import { useDisplaySettings } from '@/hooks/useDisplaySettings.js';
 import { useSensitiveMode } from '@/hooks/useSensitiveMode.js';
 import { formatDisplayDate, getCaseNumberPillStyle, getDateDisplayOptions } from '@/utils/caseUtils.js';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const CASE_TABS = [
-  { id: 'overview', label: 'نظرة عامة', icon: '📋' },
-  { id: 'sessions', label: 'الجلسات', icon: '📅' },
-  { id: 'judgments', label: 'الأحكام', icon: '⚖️' },
-  { id: 'procedures', label: 'إجراءات الدعوى', icon: '🗂️' },
-  { id: 'tasks', label: 'المهام', icon: '✓' },
-  { id: 'legal', label: 'التحليل القانوني', icon: '📝' },
-  { id: 'documents', label: 'المستندات', icon: '📄' },
-  { id: 'attachments', label: 'أوراق الدعوى', icon: '📎' },
-  { id: 'edit', label: 'تعديل', icon: '✏️' },
-];
-
-const DEFAULT_BLOCK_TYPES = [
-  { id: 'facts', label: 'الوقائع', icon: '📖', color: '#3b82f6', bg: '#dbeafe' },
-  { id: 'grounds', label: 'أسباب الطعن', icon: '⚠', color: '#f59e0b', bg: '#fef3c7' },
-  { id: 'response', label: 'الرد', icon: '💬', color: '#10b981', bg: '#d1fae5' },
-  { id: 'defense', label: 'الدفاع', icon: '🛡️', color: '#8b5cf6', bg: '#f3e8ff' },
-  { id: 'position', label: 'الموقف', icon: '👁️', color: '#ef4444', bg: '#fee2e2' },
-  { id: 'notes', label: 'ملاحظات', icon: '📝', color: '#6b7280', bg: '#f3f4f6' },
-  { id: 'custom', label: 'مخصص', icon: '★', color: '#ec4899', bg: '#fce7f3' },
-];
-
-const STATUS_LABELS = {
-  new: 'جديدة',
-  active: 'نشطة',
-  under_review: 'قيد المراجعة',
-  reserved_for_judgment: 'محجوزة للحكم',
-  judged: 'محكوم فيها',
-  appeal_window_open: 'نافذة الطعن',
-  suspended: 'موقوفة',
-  struck_out: 'مشطوبة',
-  archived: 'مؤرشفة',
-};
-
-// ============================================================================
-// HELPER COMPONENTS
-// ============================================================================
-
-function InfoCard({ icon, label, value, blurred = false }) {
-  return (
-    <div style={{ paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-        {icon} {label}
-      </div>
-      <div
-        style={{
-          fontSize: '14px',
-          fontWeight: 600,
-          color: 'var(--text-primary)',
-          filter: blurred ? 'blur(4px)' : 'none',
-          userSelect: blurred ? 'none' : 'text',
-        }}
-      >
-        {value || '—'}
-      </div>
-    </div>
-  );
-}
-
-function BlockTypeTag({ type, onSelect, isActive }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(type)}
-      style={{
-        padding: '4px 12px',
-        borderRadius: '6px',
-        border: isActive ? `2px solid ${type.color}` : `1px solid var(--border)`,
-        background: isActive ? type.bg : 'transparent',
-        cursor: 'pointer',
-        fontSize: '12px',
-        fontFamily: 'Cairo',
-        color: isActive ? type.color : 'var(--text-secondary)',
-        fontWeight: isActive ? 600 : 400,
-        transition: 'all 0.2s',
-      }}
-    >
-      {type.icon} {type.label}
-    </button>
-  );
-}
-
-function isInspectionTask(task) {
-  const title = String(task?.title || '');
-  return title.startsWith('طلب اطلاع:') || task?.source === 'inspection';
-}
+import {
+  BlockTypeTag,
+  CASE_TABS,
+  DEFAULT_BLOCK_TYPES,
+  InfoCard,
+  STATUS_LABELS,
+  isInspectionTask,
+} from '@/pages/Cases/CaseDetailsHelpers.jsx';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -112,6 +29,7 @@ function isInspectionTask(task) {
 
 export default function CaseDetails() {
   const navigate = useNavigate();
+  const [editInitialTab, setEditInitialTab] = useState('البيانات الأساسية');
   const displaySettings = useDisplaySettings();
   const { hidden: sensitiveHidden } = useSensitiveMode();
   const dateDisplayOptions = useMemo(() => getDateDisplayOptions(displaySettings), [displaySettings]);
@@ -158,6 +76,8 @@ export default function CaseDetails() {
     handleDeleteTask,
     handleToggleTaskComplete,
     handleAddAttachment,
+    handleAddLocalFile,
+    handleSaveAttachment,
     handleDeleteAttachment,
     handleAddSession,
     handleAddJudgment,
@@ -168,6 +88,8 @@ export default function CaseDetails() {
     addCaseProcedure,
     deleteCaseProcedure,
     lastSession,
+    workspaceId,
+    refreshCaseData,
   } = useCaseDetails();
 
   const pillStyle = getCaseNumberPillStyle(caseData);
@@ -360,119 +282,171 @@ export default function CaseDetails() {
 
   // ========== RENDER TAB CONTENT ==========
 
+  const roleCapacityRaw = String(caseData?.roleCapacity || caseData?.role || '').trim();
+  const isNoStake = roleCapacityRaw.includes('لا شأن') || roleCapacityRaw.includes('لا شان');
+
   let tabContent = null;
 
   if (activeTab === 'overview') {
+    // --- SMART CALCULATIONS ---
+    const totalSessions = Array.isArray(caseData?.sessionsHistory) ? caseData.sessionsHistory.length : 0;
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const pendingTasks = tasks.length - completedTasks;
+    const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+    
+    // Case Lifespan Math
+    const filingDate = caseData?.filingDate;
+    let caseLifespan = null;
+    if (filingDate) {
+      const days = Math.floor((new Date() - new Date(filingDate)) / (1000 * 60 * 60 * 24));
+      caseLifespan = days >= 0 ? days : 0;
+    }
+
+    // Urgent Items
+    const urgentTasks = tasks.filter(t => !t.completed && t.priority === 'high');
+
     tabContent = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
-        {/* 1. TOP PANORAMA: Quick Metrics Dashboard */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+        {/* ROW 1: VITAL KPIs (مؤشرات الأداء الحيوية) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           
-          {/* Widget A: Next Session / Status */}
-          <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', borderRadius: '12px', padding: '20px', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: '13px', color: '#1d4ed8', fontWeight: 800, marginBottom: '8px' }}>📅 الجلسة القادمة</div>
-            {caseData?.nextSessionDate ? (
-              <>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#1e3a8a' }}>{formatDisplayDate(caseData.nextSessionDate)}</div>
-                <div style={{ fontSize: '14px', color: '#2563eb', marginTop: '4px', fontWeight: 700 }}>{caseData.nextSessionType || 'غير محدد'}</div>
-              </>
+          {/* KPI: Case Age */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '20px' }}>⏳</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)' }}>عمر الدعوى</span>
+            </div>
+            {caseLifespan !== null ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--primary)' }}>{caseLifespan}</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)' }}>يوماً في التداول</span>
+              </div>
             ) : (
-               <div style={{ fontSize: '16px', fontWeight: 700, color: '#64748b' }}>لا توجد جلسات قادمة</div>
+              <div>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>تاريخ القيد غير مسجل</div>
+                <button onClick={() => { setEditInitialTab('بيانات إجرائية'); setActiveTab('edit'); }} style={{ background: '#f8fafc', border: '1px dashed var(--border)', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700, width: '100%' }}>
+                  + إضافة تاريخ القيد لحساب العمر
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Widget B: Latest Judgment / Result */}
-          <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', borderRadius: '12px', padding: '20px', border: '1px solid #bbf7d0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 800, marginBottom: '8px' }}>⚖️ الموقف القانوني (آخر قرار/حكم)</div>
-            <div style={{ fontSize: '15px', fontWeight: 800, color: '#166534', lineHeight: 1.5 }}>
-              {latestJudgment ? (latestJudgment.decision || latestJudgment.summary || 'حكم مسجل') : (primaryUpcomingSession?.sessionResult || 'لم يصدر قرار بعد')}
+          {/* KPI: Task Health */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '20px' }}>🎯</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)' }}>مؤشر الإنجاز</span>
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '24px', fontWeight: 900, color: taskProgress === 100 ? '#16a34a' : '#0f172a' }}>{taskProgress}%</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>({completedTasks} من {tasks.length} مهام)</span>
+              </div>
+              <div style={{ width: '100%', height: '6px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                <div style={{ width: `${taskProgress}%`, height: '100%', background: taskProgress === 100 ? '#16a34a' : 'var(--primary)', borderRadius: '999px', transition: 'width 0.5s ease' }} />
+              </div>
             </div>
           </div>
 
-          {/* Widget C: File Location */}
-          <div style={{ background: String(caseData.fileLocation).includes('غير موجود') ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '12px', padding: '20px', border: `1px solid ${String(caseData.fileLocation).includes('غير موجود') ? '#fca5a5' : '#e2e8f0'}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: '13px', color: String(caseData.fileLocation).includes('غير موجود') ? '#b91c1c' : '#475569', fontWeight: 800, marginBottom: '8px' }}>📂 مكان الملف الفعلي</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: String(caseData.fileLocation).includes('غير موجود') ? '#dc2626' : '#0f172a' }}>
-              {caseData.fileLocation || 'غير محدد'}
+          {/* KPI: Sessions Volume */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '20px' }}>⚖️</span>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)' }}>حجم التداول</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <span style={{ fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{totalSessions}</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)' }}>جلسة حتى الآن</span>
             </div>
           </div>
         </div>
 
-        {/* 2. MAIN SPLIT: Right (Timeline/Work) vs Left (Data/Attachments) */}
+        {/* ROW 2: ACTION CENTER & TIMELINE */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
           
-          {/* RIGHT COLUMN: The Case Journey & Legal Work (Wider) */}
-          <div style={{ flex: '2 1 500px', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
-            
-            {/* Extended Timeline */}
-            <div style={{ background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-               <h3 style={{ margin: '0 0 20px 0', color: 'var(--primary)', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
-                <span>⏳</span> خريطة سير الدعوى
+          {/* Action Center (Left) */}
+          <div style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+            <div style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                ⚡ ماذا بعد؟ (الأولويات)
               </h3>
-              <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
-                <CaseTimeline timelineEvents={timelineEvents} dateDisplayOptions={dateDisplayOptions} />
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Next Session Bubble */}
+                {caseData?.nextSessionDate ? (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px', borderRadius: '8px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ fontSize: '24px' }}>📅</div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 800 }}>الجلسة القادمة</div>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#1e3a8a' }}>{formatDisplayDate(caseData.nextSessionDate)}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: '#f1f5f9', border: '1px dashed #cbd5e1', padding: '12px', borderRadius: '8px', display: 'flex', gap: '12px', alignItems: 'center', opacity: 0.8 }}>
+                    <div style={{ fontSize: '24px' }}>📅</div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#475569' }}>لا توجد جلسات مجدولة قريباً</div>
+                  </div>
+                )}
+
+                {/* Urgent Tasks */}
+                {urgentTasks.length > 0 && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '12px', borderRadius: '8px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ fontSize: '24px' }}>🔥</div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 800 }}>مهام عاجلة جداً</div>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#991b1b' }}>لديك {urgentTasks.length} مهام ذات أولوية قصوى</div>
+                    </div>
+                  </div>
+                )}
+                
+                {urgentTasks.length === 0 && !caseData?.nextSessionDate && (
+                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>لا توجد أولويات عاجلة حالياً</div>
+                )}
               </div>
             </div>
 
-            {/* Legal Blocks Section */}
-            <CaseLegalBlocksSection
-              legalBlocks={legalBlocks}
-              blockTypes={blockTypes}
-              savingBlocks={savingBlocks}
-              showBlockTypesManager={showBlockTypesManager}
-              setShowBlockTypesManager={setShowBlockTypesManager}
-              saveBlocks={saveBlocks}
-              updateBlockTypes={updateBlockTypes}
-              setShowReportModal={setShowReportModal}
-              onAddBlock={() => {
-                const newBlock = { id: `block_${Date.now()}`, type: 'custom', title: 'كتلة جديدة', content: '', order: Math.max(...legalBlocks.map(b => b.order), 0) + 1 };
-                setLegalBlocks([...legalBlocks, newBlock]);
-              }}
-              onUpdateBlockTitle={(blockId, value) => setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, title: value } : b))}
-              onUpdateBlockType={(blockId, value) => setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, type: value } : b))}
-              onMoveBlockUp={(blockId, blockOrder) => setLegalBlocks(legalBlocks.map(b => { if (b.id === blockId) return { ...b, order: b.order - 1 }; if (b.order === blockOrder - 1) return { ...b, order: b.order + 1 }; return b; }))}
-              onMoveBlockDown={(blockId, blockOrder) => setLegalBlocks(legalBlocks.map(b => { if (b.id === blockId) return { ...b, order: b.order + 1 }; if (b.order === blockOrder + 1) return { ...b, order: b.order - 1 }; return b; }))}
-              onDeleteBlock={(blockId) => setLegalBlocks(legalBlocks.filter(b => b.id !== blockId))}
-              onUpdateBlockContent={(blockId, value) => setLegalBlocks(legalBlocks.map(b => b.id === blockId ? { ...b, content: value } : b))}
-            />
-          </div>
+            {/* QUICK PORTALS (بوابات التبويبات) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <button onClick={() => setActiveTab('judgments')} style={{ background: 'white', border: '1px solid var(--border)', padding: '16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'right', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ fontSize: '20px', marginBottom: '8px' }}>⚖️</div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>سجل الأحكام</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>{judgments.length} أحكام مسجلة</div>
+              </button>
+              
+              <button onClick={() => setActiveTab('documents')} style={{ background: 'white', border: '1px solid var(--border)', padding: '16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'right', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ fontSize: '20px', marginBottom: '8px' }}>📄</div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>المستندات والمذكرات</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>{(caseData?.attachments?.length || 0)} مرفقات ومستندات</div>
+              </button>
 
-          {/* LEFT COLUMN: Meta Data & Attachments (Narrower, Scrollable) */}
-          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
-            
-            {/* Scrollable Basic Data Container */}
-            <div style={{ background: 'white', padding: '0', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-               <h3 style={{ margin: '0', color: 'var(--primary)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', padding: '16px 20px', background: '#f8fafc' }}>
-                <span>📄</span> البيانات الأساسية
-              </h3>
-              <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '20px' }}>
-                <CaseInfo caseData={caseData} statusLabels={STATUS_LABELS} sensitiveHidden={sensitiveHidden} />
-              </div>
-            </div>
-
-            {/* Quick Attachments */}
-            {caseData.attachments?.length > 0 && (
-              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ margin: '0 0 16px 0', color: 'var(--text-primary)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
-                  <span>📎</span> أوراق ومرفقات سريعة
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {caseData.attachments.slice(0, 5).map((att, i) => (
-                    <a key={i} href={att.url} target="_blank" rel="noreferrer" style={{ fontSize: '13px', padding: '10px 12px', background: '#f1f5f9', borderRadius: '8px', color: 'var(--primary)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid #e2e8f0', fontWeight: 600 }}>
-                      {att.title || 'مرفق بدون اسم'}
-                    </a>
-                  ))}
-                  {caseData.attachments.length > 5 && (
-                    <div style={{ fontSize: '12px', textAlign: 'center', color: 'var(--text-muted)', marginTop: '4px' }}>+ {caseData.attachments.length - 5} مرفقات أخرى (شاهد التبويب)</div>
-                  )}
+              <button onClick={() => setActiveTab('legal')} style={{ background: 'white', border: '1px solid var(--border)', padding: '16px', borderRadius: '12px', cursor: 'pointer', textAlign: 'right', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}><span>📝</span> التحليل القانوني للعمل الفني</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>{legalBlocks.length} كتل فنية (أسانيد، وقائع، دفاع)</div>
+                  </div>
+                  <div style={{ color: 'var(--primary)', fontSize: '18px' }}>←</div>
                 </div>
-              </div>
-            )}
+              </button>
+            </div>
 
           </div>
-        </div>
 
+          {/* Mini-Timeline (Right) */}
+          <div style={{ flex: '2 1 400px', minWidth: 0, background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '16px', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, color: '#0f172a', fontSize: '15px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⏳</span> آخر التطورات (نبض الدعوى)
+              </h3>
+              <button onClick={() => setActiveTab('sessions')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>عرض السجل كاملاً</button>
+            </div>
+            <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '8px' }}>
+              <CaseTimeline timelineEvents={timelineEvents.slice(0, 5)} dateDisplayOptions={dateDisplayOptions} />
+            </div>
+          </div>
+
+        </div>
       </div>
     );
   } else if (activeTab === 'sessions') {
@@ -556,7 +530,7 @@ export default function CaseDetails() {
           const newBlock = {
             id: `block_${Date.now()}`,
             type: 'custom',
-            title: 'ظƒطھظ„ط© ط¬ط¯ظٹط¯ط©',
+            title: 'كتلة جديدة',
             content: '',
             order: Math.max(...legalBlocks.map(b => b.order), 0) + 1,
           };
@@ -597,11 +571,7 @@ export default function CaseDetails() {
       <CaseAttachmentsTab
         attachments={caseData.attachments || []}
         dateDisplayOptions={dateDisplayOptions}
-        onAddAttachment={() => {
-          setNewAttachmentUrl('');
-          setNewAttachmentTitle('');
-          setShowAttachmentForm(true);
-        }}
+        onSaveAttachment={handleSaveAttachment}
         onDeleteAttachment={handleDeleteAttachment}
       />
     );
@@ -613,7 +583,16 @@ export default function CaseDetails() {
       />
     );
   } else if (activeTab === 'edit') {
-    tabContent = <CaseEditTab caseData={caseData} onSave={() => navigate('/cases')} />;
+    tabContent = (
+      <CaseEditTab 
+        caseData={caseData} 
+        workspaceId={workspaceId} 
+        onSave={() => {
+          if (refreshCaseData) refreshCaseData();
+          setActiveTab('overview');
+        }} 
+      />
+    );
   }
 
   return (
@@ -1183,6 +1162,8 @@ export default function CaseDetails() {
     </>
   );
 }
+
+
 
 
 

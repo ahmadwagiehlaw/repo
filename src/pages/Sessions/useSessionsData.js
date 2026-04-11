@@ -259,13 +259,12 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     loadSessionsFromCases().catch(() => {});
   }, [loadSessionsFromCases]);
 
-  useEffect(() => {
-    const buildArchiveIndex = async () => {
-      if (!workspaceId) {
-        setArchiveIndex(new Map());
-        return;
-      }
-
+  const refreshArchiveIndex = useCallback(async () => {
+    if (!workspaceId) {
+      setArchiveIndex(new Map());
+      return;
+    }
+    try {
       const docs = await storage.listArchiveDocuments(workspaceId);
       const index = new Map();
       docs.forEach((doc) => {
@@ -278,12 +277,14 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
         }
       });
       setArchiveIndex(index);
-    };
-
-    buildArchiveIndex().catch(() => {
+    } catch {
       setArchiveIndex(new Map());
-    });
+    }
   }, [workspaceId]);
+
+  useEffect(() => {
+    refreshArchiveIndex();
+  }, [refreshArchiveIndex]);
 
   useEffect(() => {
     setPage(1);
@@ -720,6 +721,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     viewNameInput,
     setViewNameInput,
     archiveIndex,
+    refreshArchiveIndex,
     dateTooltip,
     loadSessionsFromCases,
     handleColResize,
