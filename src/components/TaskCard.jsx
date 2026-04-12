@@ -6,21 +6,28 @@ function formatDate(value) {
 }
 
 const TaskCard = React.memo(function TaskCard({
-  task,
-  compact = false,
-  isUrgent,
-  isImportant,
-  isOverdue,
-  daysLeft,
-  relatedCase,
-  ruleMeta,
-  autoSourceTitle,
-  displaySettings,
-  onToggleDone,
-  onTogglePin,
-  onEdit,
-  onOpenCasePanel
-}) {
+            <span
+              style={{
+                fontSize: compact ? 13 : 14,
+                fontWeight: isImportant || isUrgent ? 700 : 600,
+                textDecoration: task.status === 'done' ? 'line-through' : 'none',
+                color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text-primary)',
+              }}
+            >
+              {/* Manual-task icon: only show if not auto */}
+              {!ruleMeta.isAuto && task.taskType === 'manual' && (
+                <span title="مهمة يدوية" style={{ marginLeft: 4, cursor: 'help' }}>
+                  📋
+                </span>
+              )}
+              {/* Auto-task icon: unchanged */}
+              {ruleMeta.isAuto && (
+                <span title={autoSourceTitle} style={{ marginLeft: 4, cursor: 'help' }}>
+                  ⚙️
+                </span>
+              )}
+              {task.title}
+            </span>
   if (task.taskType === 'administrative') {
     return (
       <div

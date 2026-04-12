@@ -7,7 +7,7 @@
 ✅ P1   100% — Attachments + LocalFileIndex + CloudSync
 ✅ P2   100% — Case Flags + Badges
 ✅ P3   100% — Judgments Agenda + Deadline Calc
-🟡 P4    95% — Tasks UI: ⚙️✅ فلتر✅ tooltip✅ | manual icon❌
+✅ P4   100% — Tasks UI: ⚙️✅ فلتر✅ tooltip✅ | manual icon✅
 ✅ P5   100% — Workspace Switcher
 🟡 P6    90% — Sessions✅ print.css✅ | workspace-name header❌
 ✅ P7   100% — Archive
@@ -31,7 +31,7 @@
 ── ديون تقنية وتكرارات (للمعالجة لاحقاً) ─────────────────────
 ✅ [DUP-1] isInspectionTask() — تم نقلها وتوحيدها بالكامل من src/utils/caseUtils.js والتأكد عملياً من سلامة جميع الاستيرادات
 ✅ [DUP-2] Date formatting — تم توحيده باستخدام DateUtils.js مع الحفاظ على DD/MM/YYYY
-🟡 [DUP-3] Auto-task logic في useJudgmentsData.js:640 + TaskEngine.js
+✅ [DUP-3] Auto-task logic — تم توحيده عبر TaskEngine.js helper مشترك وإزالة التكرار من useJudgmentsData.js
 ⚠️ [F-1] ملف Templates.jsx ضخم (131KB) - يعمل بكفاءة ولكن يحتاج تجزئة لاحقاً
 ⚠️ [F-2] ملف Settings.jsx ضخم (92KB) - يعمل بكفاءة ولكن يحتاج تجزئة لاحقاً
 
