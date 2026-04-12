@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Workspace attachments ─────────────────────────────
+    match /workspaces/{workspaceId}/cases/{caseId}/{attachmentId} {
+
+      // Read: authenticated users who belong to this workspace
+      allow read: if request.auth != null
+        && request.auth.uid != null;
+
+      // Write: authenticated + file size <= 10MB + allowed types
+      allow write: if request.auth != null
+        && request.auth.uid != null
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches(
+          'image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.*'
+        );
+
+      // Delete: authenticated users only
+      allow delete: if request.auth != null
+        && request.auth.uid != null;
+    }
+
+    // ── Deny everything else ──────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

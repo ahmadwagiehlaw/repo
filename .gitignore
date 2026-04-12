@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.production
+.env.*
+env.js
+firebase.config.js
+google-drive.config.js
+app.config.js
+js/config/config.js
+*.log
+.DS_Store
+coverage/
+.vscode/
+.idea/
+*.tmp
+\! SLA PRO.rar
+.legacy/
+node_modules
+node_modules/

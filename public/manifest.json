@@ -1,0 +1,29 @@
+{
+  "name": "LawBase — النظام القانوني المتكامل",
+  "short_name": "LawBase",
+  "description": "نظام إدارة القضايا القانونية للمحامين المصريين",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1e293b",
+  "background_color": "#0f172a",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "قضية جديدة",
+      "url": "/cases/new",
+      "description": "إضافة قضية جديدة"
+    },
+    {
+      "name": "جلساتي اليوم",
+      "url": "/sessions",
+      "description": "عرض جلسات اليوم"
+    }
+  ]
+}
