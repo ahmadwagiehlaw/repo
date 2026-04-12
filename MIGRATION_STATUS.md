@@ -7,7 +7,7 @@
 ✅ P1   100% — Attachments + LocalFileIndex + CloudSync
 ✅ P2   100% — Case Flags + Badges
 ✅ P3   100% — Judgments Agenda + Deadline Calc
-✅ P4   100% — Tasks UI: ⚙️✅ فلتر✅ tooltip✅ | manual icon✅
+✅ P4   100% — Tasks UI: ⚙️✅ فلتر✅ tooltip✅ | manual icon✅ (final UI patch 2026-04-12)
 ✅ P5   100% — Workspace Switcher
 🟡 P6    90% — Sessions✅ print.css✅ | workspace-name header❌
 ✅ P7   100% — Archive
