@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin.js';
-import { db } from '@/config/firebase.js';
+import storage from '@/data/Storage.js';
 
 const PLAN_OPTIONS = [
   { value: 'free',  label: '🆓 مجاني',  color: '#64748b' },
@@ -41,22 +41,19 @@ export default function SuperAdmin() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [wsSnap, reqSnap] = await Promise.all([
-        db.collection('workspaces').get(),
-        db.collection('activationRequests').orderBy('createdAt', 'desc').limit(100).get(),
+      const [ws, activationRequests] = await Promise.all([
+        storage.listWorkspaces(),
+        storage.listActivationRequests({ limit: 100 }),
       ]);
-
-      const ws = wsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setWorkspaces(ws);
-      setRequests(reqSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setRequests(activationRequests);
 
       // Load usage (case counts) for each workspace
       const usage = {};
       await Promise.all(ws.map(async (w) => {
         try {
-          const casesSnap = await db.collection('workspaces').doc(w.id)
-            .collection('cases').get();
-          usage[w.id] = { cases: casesSnap.size };
+          const caseCount = await storage.getWorkspaceCaseCount(w.id);
+          usage[w.id] = { cases: caseCount };
         } catch { usage[w.id] = { cases: 0 }; }
       }));
       setUsageMap(usage);
@@ -70,15 +67,13 @@ export default function SuperAdmin() {
 
   const loadMembers = async (workspaceId) => {
     try {
-      const snap = await db.collection('workspaces').doc(workspaceId)
-        .collection('members').get();
-      const members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const members = await storage.listWorkspaceMembers(workspaceId);
 
       // Enrich with user emails from users collection
       const enriched = await Promise.all(members.map(async (m) => {
         try {
-          const userDoc = await db.collection('users').doc(m.userId || m.id).get();
-          return { ...m, email: userDoc.data()?.email || '', displayName: userDoc.data()?.displayName || '' };
+          const userDoc = await storage.getUserProfile(m.userId || m.id);
+          return { ...m, email: userDoc?.email || '', displayName: userDoc?.displayName || '' };
         } catch { return m; }
       }));
       setMembersMap(prev => ({ ...prev, [workspaceId]: enriched }));
@@ -96,9 +91,10 @@ export default function SuperAdmin() {
   const updatePlan = async (workspaceId, plan, expiresAt) => {
     setSaving(workspaceId);
     try {
-      await db.collection('workspaces').doc(workspaceId).set(
-        { plan, subscriptionExpiresAt: expiresAt || null }, { merge: true }
-      );
+      await storage.updateWorkspacePlan(workspaceId, {
+        plan,
+        subscriptionExpiresAt: expiresAt || null,
+      });
       setWorkspaces(prev => prev.map(w =>
         w.id === workspaceId ? { ...w, plan, subscriptionExpiresAt: expiresAt || null } : w
       ));
@@ -108,8 +104,7 @@ export default function SuperAdmin() {
   const deleteMember = async (workspaceId, memberId) => {
     if (!window.confirm('حذف هذا العضو من مساحة العمل؟')) return;
     try {
-      await db.collection('workspaces').doc(workspaceId)
-        .collection('members').doc(memberId).delete();
+      await storage.deleteWorkspaceMember(workspaceId, memberId);
       setMembersMap(prev => ({
         ...prev,
         [workspaceId]: (prev[workspaceId] || []).filter(m => m.id !== memberId),
@@ -121,9 +116,10 @@ export default function SuperAdmin() {
     setSaving(req.id);
     try {
       await updatePlan(req.workspaceId, 'pro', null);
-      await db.collection('activationRequests').doc(req.id).set(
-        { status: 'approved', approvedAt: new Date().toISOString() }, { merge: true }
-      );
+      await storage.updateActivationRequestStatus(req.id, {
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+      });
       setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved' } : r));
     } finally { setSaving(''); }
   };
@@ -131,9 +127,10 @@ export default function SuperAdmin() {
   const rejectRequest = async (req) => {
     setSaving(req.id);
     try {
-      await db.collection('activationRequests').doc(req.id).set(
-        { status: 'rejected', rejectedAt: new Date().toISOString() }, { merge: true }
-      );
+      await storage.updateActivationRequestStatus(req.id, {
+        status: 'rejected',
+        rejectedAt: new Date().toISOString(),
+      });
       setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'rejected' } : r));
     } finally { setSaving(''); }
   };

@@ -1,4 +1,4 @@
-MIGRATION STATUS v2.4 - LawBase Stable Release
+MIGRATION STATUS v2.1 - LawBase Stable Release
 2026-04-13
 
 LawBase Tech Lead
@@ -17,52 +17,40 @@ Patches
 - P10 = 100% - AI Panel + AssistantService + ContextBuilder
 - P11 = 100% - manifest + sw.js + CameraUpload + InstallPrompt + icon paths + drawer
 - P12 = 100% - Storage upload + firebase.js + signed URLs
-- P13 = 91% - AuditLogger + SubscriptionManager + FeatureGate + Settings wiring + fine-grained Settings audit (customReminderRules / identityKeywords / customFieldDefinitions / workspaceOptions / members)
+- P13 = 94% - AuditLogger + SubscriptionManager + FeatureGate + Settings wiring complete; ActivationRequest and SuperAdmin Firestore access routed through Storage.js; Admin tab removed from Settings UI
 
 Completed / confirmed
 - PERF-3 completed - Cairo font via @fontsource/cairo + Google Fonts CDN
 - WIRE-1 completed - evaluateRules after mutations
 - WIRE-2 completed - sessionsHistory via arrayUnion only
-- WIRE-5 mini-patch 1 completed - fine-grained audit added in Settings save flow for customRules/customFields-related changes
-- WIRE-5 mini-patch 1 (details) completed:
-  - Added local pure comparison helpers in Settings.jsx only (no new files)
-  - saveSettings now snapshots previous relevant values before building next
-  - After successful storage.updateWorkspaceSettings(...), emits non-blocking fine-grained audit logs only when changed:
-    - section=customRules, action=customReminderRulesUpdated, previousCount/nextCount (+ addedCount/removedCount)
-    - section=customRules, action=identityKeywordsUpdated, previousCount/nextCount
-    - section=customFields, action=customFieldDefinitionsUpdated, previousCount/nextCount
-  - Keeps one fallback generic settings audit only when no fine-grained branch fired
-  - Preserved existing save behavior and UI flow (customFieldsDirty reset timing, setDisplaySettings(next), LAWBASE_EVENTS dispatch)
-  - No Storage.js contract/schema changes; audit metadata only
-- WIRE-5 mini-patch 2 completed - fine-grained audit added for remaining high-value settings-side mutations
-- WIRE-5 mini-patch 2 (details) completed:
-  - OptionEditor save(...) now logs a lightweight workspaceOptions audit entry after successful saveWorkspaceOptions(...)
-  - Added section=workspaceOptions, action=workspaceOptionListUpdated, optionType, previousCount, nextCount, changeType
-  - handleMemberRoleChange(...) now logs section=members, action=memberRoleUpdated, memberId, previousRole, nextRole
-  - handleMemberActiveToggle(...) now logs section=members, action=memberActiveUpdated, memberId, previousActive, nextActive
-  - Audit remains non-blocking via nested try/catch and all writes still go through Storage.js only
-  - No UI, permissions, feedback text, or optimistic state behavior changes
-- Settings cleanup completed - obsolete admin tab removed from Settings UI
-- Settings cleanup (details) completed:
-  - Removed the activeTab === 'admin' render path from Settings.jsx
-  - SETTINGS_TABS now excludes the obsolete admin tab entry from the visible tabs list
-  - Subscription tab and UsageStatsPanel behavior remain unchanged
-  - No Storage.js, Firestore, subscriptionManager, or audit flow changes in this cleanup patch
-  - AdminSubscriptionPanel remains as temporary unreachable dead code inside Settings.jsx due to file encoding friction; safe functional removal from UI is complete
+- WIRE-5 completed - AuditLogger coverage added for Settings-side mutations
+- WIRE-4 patch 1 completed - ActivationRequest direct Firestore write removed and routed through Storage.js via createActivationRequest()
+- WIRE-4 patch 2 completed - SuperAdmin Firestore reads/writes routed through Storage.js helpers
+- WIRE-4 patch 2 (details) completed:
+  - Removed direct db/firebase import from SuperAdmin.jsx
+  - Routed activation requests loading through Storage.js
+  - Routed workspace loading and per-workspace case counts through Storage.js
+  - Routed workspace plan updates through Storage.js
+  - Routed workspace member deletion through Storage.js
+  - Routed activation request approve/reject status updates through Storage.js
+  - Preserved existing Super Admin UI behavior, filters/sorting, and state flow
+- Settings UI cleanup - obsolete Admin tab path removed from Settings.jsx after Super Admin activation
 
 Open items
-- WIRE-5 - cover remaining settings-side actions not yet emitting fine-grained audit where needed
-- WIRE-4 - Remove any direct Firestore calls in ActivationRequest / SuperAdmin flows and route them through Storage.js
 - WIRE-3 - Ensure CaseTasksTab.jsx uses isInspectionTask from src/utils/caseUtils.js consistently, including loaders
-- Build/test follow-up - resolve unrelated pre-existing Vite build error in src/pages/Cases/CaseAttachmentsTab.jsx:179 (not caused by WIRE-5 mini-patch 1 or 2, or the admin-tab cleanup patch)
 
-Known constraints
+Known blockers / notes
+- Unrelated pre-existing build blocker remains: src/pages/Cases/CaseAttachmentsTab.jsx:179 - "Empty parenthesized expression"
+- No new build error was introduced from Settings.jsx, ActivationRequest.jsx, or SuperAdmin.jsx
+- AdminSubscriptionPanel remains as temporary unreachable dead code inside Settings.jsx; safe to defer physical removal to a later cleanup patch if encoding/file stability allows
 - Stable Release, not Rescue Mode
-- Settings.jsx is large but currently working; only safe mini-patches
-- Do not reopen PERF-3, signed URLs, or drawer unless a newly documented issue appears
+- Continue with safe mini-patches only; do not reopen PERF-3, signed URLs, or drawer unless a newly documented issue appears
 
 Files to watch
 - F-1: src/pages/Templates.jsx - 131KB
 - F-2: src/pages/Settings.jsx - 92KB
+- F-3: src/pages/ActivationRequest.jsx
+- F-4: src/data/Storage.js
+- F-5: src/pages/SuperAdmin.jsx
 
-END STATUS v2.4
+END STATUS v2.1

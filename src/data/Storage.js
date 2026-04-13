@@ -160,6 +160,34 @@ export const storage = {
     }
   },
 
+  async listWorkspaces() {
+    ensureDb();
+    try {
+      const snapshot = await _db.collection('workspaces').get();
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('[Storage.listWorkspaces]', error);
+      return [];
+    }
+  },
+
+  async getWorkspaceCaseCount(workspaceId) {
+    const resolvedWorkspaceId = String(workspaceId || '').trim();
+    if (!resolvedWorkspaceId) return 0;
+
+    try {
+      const snapshot = await _db
+        .collection('workspaces')
+        .doc(resolvedWorkspaceId)
+        .collection('cases')
+        .get();
+      return snapshot.size;
+    } catch (error) {
+      console.error('[Storage.getWorkspaceCaseCount]', error);
+      return 0;
+    }
+  },
+
   /**
    * تحديث إعدادات الـ workspace
    */
@@ -171,6 +199,19 @@ export const storage = {
       .collection('settings')
       .doc('general')
       .set(updates, { merge: true });
+  },
+
+  async updateWorkspacePlan(workspaceId, planData = {}) {
+    const resolvedWorkspaceId = String(workspaceId || '').trim();
+    if (!resolvedWorkspaceId) throw new Error('workspaceId مطلوب');
+
+    await _db
+      .collection('workspaces')
+      .doc(resolvedWorkspaceId)
+      .set({
+        plan: String(planData.plan || 'free').trim() || 'free',
+        subscriptionExpiresAt: planData.subscriptionExpiresAt ?? null,
+      }, { merge: true });
   },
 
   async listWorkspaceMembers(workspaceId) {
@@ -243,6 +284,22 @@ export const storage = {
       .collection('members')
       .doc(resolvedUserId)
       .set({ isActive: Boolean(isActive) }, { merge: true });
+  },
+
+  async deleteWorkspaceMember(workspaceId, uid) {
+    const resolvedWorkspaceId = String(workspaceId || '').trim();
+    const resolvedUserId = String(uid || '').trim();
+
+    if (!resolvedWorkspaceId || !resolvedUserId) {
+      throw new Error('workspaceId و uid مطلوبان');
+    }
+
+    await _db
+      .collection('workspaces')
+      .doc(resolvedWorkspaceId)
+      .collection('members')
+      .doc(resolvedUserId)
+      .delete();
   },
 
   async getUserProfile(uid) {
@@ -333,6 +390,52 @@ export const storage = {
 
     await docRef.set(payload);
     return payload;
+  },
+
+  async createActivationRequest(requestData = {}) {
+    ensureDb();
+
+    const docRef = _db.collection('activationRequests').doc();
+    const payload = {
+      userId: String(requestData.userId || '').trim(),
+      userName: String(requestData.userName || '').trim(),
+      email: String(requestData.email || '').trim(),
+      phone: String(requestData.phone || '').trim(),
+      message: String(requestData.message || '').trim(),
+      workspaceId: String(requestData.workspaceId || '').trim(),
+      workspaceName: String(requestData.workspaceName || '').trim(),
+      status: String(requestData.status || 'pending').trim() || 'pending',
+      createdAt: requestData.createdAt || nowIso(),
+    };
+
+    await docRef.set(payload);
+    return payload;
+  },
+
+  async listActivationRequests({ limit = 100 } = {}) {
+    ensureDb();
+
+    try {
+      const snapshot = await _db
+        .collection('activationRequests')
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
+        .get();
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('[Storage.listActivationRequests]', error);
+      return [];
+    }
+  },
+
+  async updateActivationRequestStatus(requestId, updates = {}) {
+    const resolvedRequestId = String(requestId || '').trim();
+    if (!resolvedRequestId) throw new Error('requestId مطلوب');
+
+    await _db
+      .collection('activationRequests')
+      .doc(resolvedRequestId)
+      .set(updates, { merge: true });
   },
 
   async addWorkspaceMember(workspaceId, userId, memberData = {}) {

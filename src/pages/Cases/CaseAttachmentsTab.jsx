@@ -14,8 +14,18 @@ const VIEW_MODES = [
 function AttachmentThumbnail({ attachment, onOpen, onDelete, isOpening, syncStatus }) {
   const typeConfig = ATTACHMENT_TYPE_MAP[attachment.attachmentType] || null;
   const isLocal = Boolean(attachment.localId);
-  const icon = typeConfig?.icon || attachmentService.detectKind(attachment.url || '') === 'image' ? '🖼️'
-    : attachmentService.detectKind(attachment.url || '') === 'pdf' ? '📄' : '📎';
+  const detectedKind = attachmentService.detectKind(attachment.url || '');
+  let icon = typeConfig?.icon;
+
+  if (!icon) {
+    if (detectedKind === 'image') {
+      icon = '\u{1F5BC}\uFE0F';
+    } else if (detectedKind === 'pdf') {
+      icon = '\u{1F4C4}';
+    } else {
+      icon = '\u{1F4CE}';
+    }
+  }
   const color = typeConfig?.color || '#94a3b8';
   const bg = typeConfig?.bg || '#f8fafc';
 
@@ -177,23 +187,19 @@ export default function CaseAttachmentsTab({
           </button>
           <div style={{ display: 'flex', gap: 4 }}>
             {VIEW_MODES.map((m) => (
-              // ...existing code...
+              <button key={m.id} onClick={() => setViewMode(m.id)}
+                title={m.label}
+                style={{
+                  padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 16,
+                  border: viewMode === m.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                  background: viewMode === m.id ? 'var(--primary-light)' : 'white',
+                  color: viewMode === m.id ? 'var(--primary)' : 'var(--text-secondary)',
+                }}
+              >{m.icon}</button>
             ))}
           </div>
         </div>
       </FeatureGate>
-            <button key={m.id} onClick={() => setViewMode(m.id)}
-              title={m.label}
-              style={{
-                padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 16,
-                border: viewMode === m.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                background: viewMode === m.id ? 'var(--primary-light)' : 'white',
-                color: viewMode === m.id ? 'var(--primary)' : 'var(--text-secondary)',
-              }}
-            >{m.icon}</button>
-          ))}
-        </div>
-      </div>
 
       {/* ── Smart Upload Modal ── */}
       {showUpload && (

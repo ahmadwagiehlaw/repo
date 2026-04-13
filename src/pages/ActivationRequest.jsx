@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { db } from '@/config/firebase.js';
+import storage from '@/data/Storage.js';
 import subscriptionManager from '@/services/SubscriptionManager.js';
 
 export default function ActivationRequest() {
@@ -29,7 +29,7 @@ export default function ActivationRequest() {
     setSaving(true);
     setError('');
     try {
-      await db.collection('activationRequests').add({
+      await storage.createActivationRequest({
         userId: user?.uid || '',
         userName: user?.displayName || user?.email || 'مستخدم',
         email: user?.email || '',
