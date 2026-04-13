@@ -38,4 +38,10 @@
 ⚠️ [F-1] ملف Templates.jsx ضخم (131KB) - يعمل بكفاءة ولكن يحتاج تجزئة لاحقاً
 ⚠️ [F-2] ملف Settings.jsx ضخم (92KB) - يعمل بكفاءة ولكن يحتاج تجزئة لاحقاً
 
+🟢 Settings UX mini-fix — custom fields unsaved indicator✅
+- Added `customFieldsDirty` in Settings.jsx
+- Shows "لم يتم حفظ التغييرات بعد" beside custom fields quick-save button
+- Dirty resets only after successful saveSettings
+- No persistence logic changed
+
 === END STATUS v2.1 ===

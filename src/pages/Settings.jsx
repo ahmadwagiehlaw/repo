@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import storage from '@/data/Storage.js';
 import SmartImporter from '@/components/import/SmartImporter.jsx';
 import DataExporter from '@/components/export/DataExporter.jsx';
-import auditLogger from '@/services/AuditLogger.js';
+import auditLogger, { ACTION_TYPES } from '@/services/AuditLogger.js';
 import subscriptionManager from '@/services/SubscriptionManager.js';
 import {
   LITIGATION_STAGE_OPTIONS,
@@ -28,8 +28,7 @@ const SETTINGS_TABS = [
 ];
 
 const DISPLAY_FORMAT_OPTIONS = [
-  const [customFieldDefs, setCustomFieldDefs] = useState([]);
-  const [customFieldsDirty, setCustomFieldsDirty] = useState(false);
+  'DD/MM/YYYY',
   'YYYY-MM-DD',
   'MM/DD/YYYY',
   'DD/MM',
@@ -62,19 +61,16 @@ function normalizeDisplaySettings(settings = {}) {
   const caseNumberDisplayFormat = settings.caseNumberDisplayFormat
     || (settings.caseNumberDisplayOrder === 'number-first' ? 'number-sanah-year' : 'year-slash-number');
   const dateDisplayFormat = settings.dateDisplayFormat || settings.dateFormat || 'DD/MM/YYYY';
-    setCustomFieldsDirty(true);
 
   return {
     ...settings,
     useArabicNumerals,
     arabicNumerals: useArabicNumerals,
     caseNumberDisplayFormat,
-    setCustomFieldsDirty(true);
     dateDisplayFormat,
     dateFormat: dateDisplayFormat,
   };
 }
-    setCustomFieldsDirty(true);
 
 function normalizeWorkspaceConfirmationName(value) {
   return String(value || '')
@@ -88,7 +84,6 @@ function splitKeywords(value) {
     .split(/[,\u060C]/)
     .map((keyword) => keyword.trim())
     .filter(Boolean);
-      setCustomFieldsDirty(false);
 }
 
 const OPTION_TYPES = [
@@ -599,8 +594,11 @@ export default function Settings() {
   const [memberFeedback, setMemberFeedback] = useState({ type: '', text: '' });
   const [resettingWorkspace, setResettingWorkspace] = useState(false);
   const [customFieldDefs, setCustomFieldDefs] = useState([]);
+  const [customFieldsDirty, setCustomFieldsDirty] = useState(false);
 
   const workspaceId = String(currentWorkspace?.id || '').trim();
+  // TODO: replace ownerId fallback with authenticated user uid when AuthContext path is confirmed
+  const userId = String(currentWorkspace?.ownerId || '').trim();
   const selectedColor = localStorage.getItem('lb_primary_color') || '';
   const canManageAdvancedTeamFeatures = hasTeamFeatures && canManageWorkspaceMembers;
 
@@ -693,6 +691,18 @@ export default function Settings() {
         customFieldDefinitions: customFieldDefs,
       }), customFieldDefs);
       await storage.updateWorkspaceSettings(workspaceId, next);
+      try {
+        auditLogger.log(
+          workspaceId,
+          userId,
+          ACTION_TYPES.SETTINGS_CHANGE,
+          {
+            section: 'settings',
+            source: 'automation_center',
+          }
+        );
+      } catch {}
+      setCustomFieldsDirty(false);
       setSettings(next);
       setDisplaySettings(next);
       window.dispatchEvent(new CustomEvent(LAWBASE_EVENTS.WORKSPACE_OPTIONS_LOADED, {
@@ -772,16 +782,19 @@ export default function Settings() {
         required: false,
       },
     ]);
+    setCustomFieldsDirty(true);
   }
 
   function updateCustomField(index, patch) {
     setCustomFieldDefs((prev) =>
       prev.map((field, idx) => (idx === index ? { ...field, ...patch } : field))
     );
+    setCustomFieldsDirty(true);
   }
 
   function removeCustomField(index) {
     setCustomFieldDefs((prev) => prev.filter((_, idx) => idx !== index));
+    setCustomFieldsDirty(true);
   }
 
   function updateIdentityKeywords(value) {
@@ -923,7 +936,7 @@ export default function Settings() {
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: 15 }}>🧩 حقول مخصصة</h3>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
               {customFieldDefs.length}/{MAX_CUSTOM_FIELDS}
             </span>
@@ -935,6 +948,11 @@ export default function Settings() {
             >
               {saving ? '...' : '💾 حفظ سريع'}
             </button>
+            {customFieldsDirty && (
+              <span style={{ fontSize: 12, color: '#dc2626', marginRight: 4, whiteSpace: 'nowrap' }}>
+                لم يتم حفظ التغييرات بعد
+              </span>
+            )}
           </div>
         </div>
 
@@ -1950,6 +1968,18 @@ function AdminSubscriptionPanel({ workspaceId, currentWorkspace }) {
         plan,
         subscriptionExpiresAt: expiresAt || null,
       });
+      try {
+        auditLogger.log(
+          workspaceId,
+          userId,
+          ACTION_TYPES.SETTINGS_CHANGE,
+          {
+            section: 'subscription',
+            plan,
+            hasExpiry: Boolean(expiresAt),
+          }
+        );
+      } catch {}
       const { default: subscriptionManager } =
         await import('@/services/SubscriptionManager.js');
       subscriptionManager.init({
