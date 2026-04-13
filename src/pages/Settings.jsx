@@ -1846,19 +1846,17 @@ function AuditLogViewer({ workspaceId }) {
   const [loading, setLoading] = useState(false);
   const [filterAction, setFilterAction] = useState('');
 
-  const hasAccess = subscriptionManager.hasFeature('auditLog');
-
   useEffect(() => {
-    if (!hasAccess || !workspaceId) return;
+    if (!workspaceId) return;
     setLoading(true);
     auditLogger.getRecentLogs(workspaceId, 50)
       .then(setLogs)
       .catch(() => setLogs([]))
       .finally(() => setLoading(false));
-  }, [workspaceId, hasAccess]);
+  }, [workspaceId]);
 
-  if (!hasAccess) {
-    return (
+  return (
+    <FeatureGate feature="auditLog" fallback={
       <div style={{ padding: 24, textAlign: 'center', direction: 'rtl' }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
@@ -1868,71 +1866,61 @@ function AuditLogViewer({ workspaceId }) {
           {subscriptionManager.getUpgradeMessage('auditLog')}
         </div>
       </div>
-    );
-  }
-
-  const filteredLogs = filterAction
-    ? logs.filter((l) => l.action === filterAction)
-    : logs;
-
-  const uniqueActions = [...new Set(logs.map((l) => l.action))];
-
-  return (
-    <div style={{ direction: 'rtl' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 15 }}>🔍 سجل التدقيق</h3>
-        <select
-          value={filterAction}
-          onChange={(e) => setFilterAction(e.target.value)}
-          className="form-input"
-          style={{ width: 200, fontSize: 13 }}
-        >
-          <option value="">كل العمليات</option>
-          {uniqueActions.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-          جاري التحميل...
+    }>
+      <div style={{ direction: 'rtl' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>
+            🔍 سجل التدقيق
+          </h3>
+          <select
+            value={filterAction}
+            onChange={(e) => setFilterAction(e.target.value)}
+            className="form-input"
+            style={{ width: 200, fontSize: 13 }}
+          >
+            <option value="">كل العمليات</option>
+          </select>
         </div>
-      ) : filteredLogs.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-          <div>لا توجد عمليات مسجلة بعد</div>
-        </div>
-      ) : (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-secondary)' }}>
-                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>العملية</th>
-                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>المستخدم</th>
-                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>التوقيت</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLogs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: '1px solid var(--border-light)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <td style={{ padding: '8px 12px', fontWeight: 600 }}>{log.action}</td>
-                  <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{log.userId?.substring(0, 12)}...</td>
-                  <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12 }}>
-                    {log.timestamp ? new Date(log.timestamp).toLocaleString('ar-EG') : '—'}
-                  </td>
+        {logs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+            <div>لا توجد عمليات مسجلة بعد</div>
+          </div>
+        ) : (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>العملية</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>المستخدم</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, borderBottom: '1px solid var(--border)' }}>التوقيت</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} style={{ borderBottom: '1px solid var(--border-light)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{log.action}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{log.userId?.substring(0, 12)}...</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                      {log.timestamp ? new Date(log.timestamp).toLocaleString('ar-EG') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </FeatureGate>
   );
 }
+
+// Remove duplicate/old code after AuditLogViewer
+// ...existing code...
+// Removed duplicate/old code block after AuditLogViewer
 
 // ── AdminSubscriptionPanel Component ────────────────────────
 function AdminSubscriptionPanel({ workspaceId, currentWorkspace }) {

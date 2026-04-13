@@ -121,16 +121,14 @@ export default function CaseAttachmentsTab({
   const [openingId, setOpeningId] = useState(null);
   const [preview, setPreview] = useState(null);
   const [syncProgress, setSyncProgress] = useState({});
-  const isProUser = subscriptionManager.hasFeature('cloudSync');
 
   useEffect(() => {
-    if (!isProUser) return;
     let unsub;
     import('@/services/CloudSyncService.js').then(({ default: cloudSync }) => {
       unsub = cloudSync.onProgress((progress) => setSyncProgress({ ...progress }));
     });
     return () => { if (unsub) unsub(); };
-  }, [isProUser]);
+  }, []);
 
   const handleOpen = async (attachment) => {
     if (!attachment.localId) {
@@ -168,16 +166,22 @@ export default function CaseAttachmentsTab({
     <div style={{ direction: 'rtl' }}>
 
       {/* ── Toolbar ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="btn-primary"
-          style={{ padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          📎 إضافة مرفق قانوني
-        </button>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {VIEW_MODES.map((m) => (
+      <FeatureGate feature="cloudSync">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="btn-primary"
+            style={{ padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            📎 إضافة مرفق قانوني
+          </button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {VIEW_MODES.map((m) => (
+              // ...existing code...
+            ))}
+          </div>
+        </div>
+      </FeatureGate>
             <button key={m.id} onClick={() => setViewMode(m.id)}
               title={m.label}
               style={{
