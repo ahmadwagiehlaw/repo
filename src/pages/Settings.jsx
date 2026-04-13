@@ -28,7 +28,8 @@ const SETTINGS_TABS = [
 ];
 
 const DISPLAY_FORMAT_OPTIONS = [
-  'DD/MM/YYYY',
+  const [customFieldDefs, setCustomFieldDefs] = useState([]);
+  const [customFieldsDirty, setCustomFieldsDirty] = useState(false);
   'YYYY-MM-DD',
   'MM/DD/YYYY',
   'DD/MM',
@@ -61,16 +62,19 @@ function normalizeDisplaySettings(settings = {}) {
   const caseNumberDisplayFormat = settings.caseNumberDisplayFormat
     || (settings.caseNumberDisplayOrder === 'number-first' ? 'number-sanah-year' : 'year-slash-number');
   const dateDisplayFormat = settings.dateDisplayFormat || settings.dateFormat || 'DD/MM/YYYY';
+    setCustomFieldsDirty(true);
 
   return {
     ...settings,
     useArabicNumerals,
     arabicNumerals: useArabicNumerals,
     caseNumberDisplayFormat,
+    setCustomFieldsDirty(true);
     dateDisplayFormat,
     dateFormat: dateDisplayFormat,
   };
 }
+    setCustomFieldsDirty(true);
 
 function normalizeWorkspaceConfirmationName(value) {
   return String(value || '')
@@ -84,6 +88,7 @@ function splitKeywords(value) {
     .split(/[,\u060C]/)
     .map((keyword) => keyword.trim())
     .filter(Boolean);
+      setCustomFieldsDirty(false);
 }
 
 const OPTION_TYPES = [
