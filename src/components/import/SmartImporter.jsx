@@ -136,7 +136,7 @@ export const SYSTEM_FIELDS = [
     key: 'inspectionRequests',
     label: 'طلبات الإطلاع',
     required: false,
-    aliases: ['طلبات الاطلاع', 'inspectionrequests', 'طلب إطلاع', 'إطلاع'],
+    aliases: ['طلبات الاطلاع', 'inspectionrequests', 'طلب اطلاع', 'اطلاع'],
   },
   {
     key: 'sessionPreparation',
@@ -191,32 +191,32 @@ export const SYSTEM_FIELDS = [
 const FIELD_TABS = [
   {
     id: 'identity',
-    label: 'الهوية الأساسية',
+    label: 'Ø§Ù„Ù‡ÙˆÙŠØ© Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©',
     fields: ['caseNumber', 'caseYear', 'plaintiffName', 'defendantName', 'court', 'circuit'],
   },
   {
     id: 'case_details',
-    label: 'تفاصيل النزاع',
+    label: 'ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ù†Ø²Ø§Ø¹',
     fields: ['roleCapacity', 'litigationStage', 'agendaRoute', 'judge', 'procedureTrack'],
   },
   {
     id: 'sessions',
-    label: 'سجل الجلسات',
+    label: 'Ø³Ø¬Ù„ Ø§Ù„Ø¬Ù„Ø³Ø§Øª',
     fields: ['lastSessionDate', 'sessionResult', 'nextSessionDate', 'previousSession'],
   },
   {
     id: 'judgments',
-    label: 'بيانات الحكم',
+    label: 'Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø­ÙƒÙ…',
     fields: ['summaryDecision', 'judgmentPronouncement', 'judgmentCategory'],
   },
   {
     id: 'parties',
-    label: 'أطراف وطلبات',
+    label: 'Ø£Ø·Ø±Ø§Ù ÙˆØ·Ù„Ø¨Ø§Øª',
     fields: ['fileLocation', 'notes', 'inspectionRequests', 'sessionPreparation'],
   },
   {
     id: 'extra',
-    label: 'حقول إضافية',
+    label: 'Ø­Ù‚ÙˆÙ„ Ø¥Ø¶Ø§ÙÙŠØ©',
     fields: ['title', 'assignedCounsel', 'defendantAddress', 'joinedCases', 'chosenHeadquarters', 'firstInstanceNumber', 'firstInstanceCourt', 'firstInstanceDate', 'firstInstanceJudgment'],
   },
 ];
@@ -226,27 +226,27 @@ const MAPPING_STORAGE_KEY = 'lb_import_field_maps';
 const SYNC_MODES = [
   {
     id: 'smart',
-    label: '🔄 مزامنة ذكية (مُوصى به)',
-    desc: 'يحدّث السجلات الموجودة بناءً على رقم الدعوى + السنة، ويضيف الجديدة فقط، ويتجاهل الفارغة',
-    icon: '🔄',
+    label: 'ðŸ”„ Ù…Ø²Ø§Ù…Ù†Ø© Ø°ÙƒÙŠØ© (Ù…ÙÙˆØµÙ‰ Ø¨Ù‡)',
+    desc: 'ÙŠØ­Ø¯Ù‘Ø« Ø§Ù„Ø³Ø¬Ù„Ø§Øª Ø§Ù„Ù…ÙˆØ¬ÙˆØ¯Ø© Ø¨Ù†Ø§Ø¡Ù‹ Ø¹Ù„Ù‰ Ø±Ù‚Ù… Ø§Ù„Ø¯Ø¹ÙˆÙ‰ + Ø§Ù„Ø³Ù†Ø©ØŒ ÙˆÙŠØ¶ÙŠÙ Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© ÙÙ‚Ø·ØŒ ÙˆÙŠØªØ¬Ø§Ù‡Ù„ Ø§Ù„ÙØ§Ø±ØºØ©',
+    icon: 'ðŸ”„',
   },
   {
     id: 'add_only',
-    label: '➕ إضافة فقط',
-    desc: 'يضيف السجلات الجديدة فقط — لا يعدّل الموجود أبداً',
-    icon: '➕',
+    label: 'âž• Ø¥Ø¶Ø§ÙØ© ÙÙ‚Ø·',
+    desc: 'ÙŠØ¶ÙŠÙ Ø§Ù„Ø³Ø¬Ù„Ø§Øª Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© ÙÙ‚Ø· â€” Ù„Ø§ ÙŠØ¹Ø¯Ù‘Ù„ Ø§Ù„Ù…ÙˆØ¬ÙˆØ¯ Ø£Ø¨Ø¯Ø§Ù‹',
+    icon: 'âž•',
   },
   {
     id: 'update_only',
-    label: '✏️ تحديث فقط',
-    desc: 'يحدّث الموجود فقط بناءً على رقم الدعوى + السنة — لا يضيف جديداً',
-    icon: '✏️',
+    label: 'âœï¸ ØªØ­Ø¯ÙŠØ« ÙÙ‚Ø·',
+    desc: 'ÙŠØ­Ø¯Ù‘Ø« Ø§Ù„Ù…ÙˆØ¬ÙˆØ¯ ÙÙ‚Ø· Ø¨Ù†Ø§Ø¡Ù‹ Ø¹Ù„Ù‰ Ø±Ù‚Ù… Ø§Ù„Ø¯Ø¹ÙˆÙ‰ + Ø§Ù„Ø³Ù†Ø© â€” Ù„Ø§ ÙŠØ¶ÙŠÙ Ø¬Ø¯ÙŠØ¯Ø§Ù‹',
+    icon: 'âœï¸',
   },
   {
     id: 'force_overwrite',
-    label: '⚠️ استبدال كامل',
-    desc: 'يستبدل كل البيانات الموجودة — خطر: قد تفقد بيانات يدوية',
-    icon: '⚠️',
+    label: 'âš ï¸ Ø§Ø³ØªØ¨Ø¯Ø§Ù„ ÙƒØ§Ù…Ù„',
+    desc: 'ÙŠØ³ØªØ¨Ø¯Ù„ ÙƒÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…ÙˆØ¬ÙˆØ¯Ø© â€” Ø®Ø·Ø±: Ù‚Ø¯ ØªÙÙ‚Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª ÙŠØ¯ÙˆÙŠØ©',
+    icon: 'âš ï¸',
     danger: true,
   },
 ];
@@ -500,7 +500,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
       const names = Array.isArray(workbookInstance.SheetNames) ? workbookInstance.SheetNames : [];
       if (names.length === 0) {
-        setError('الملف لا يحتوي على أوراق عمل صالحة');
+        setError('Ø§Ù„Ù…Ù„Ù Ù„Ø§ ÙŠØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ Ø£ÙˆØ±Ø§Ù‚ Ø¹Ù…Ù„ ØµØ§Ù„Ø­Ø©');
         return;
       }
 
@@ -508,7 +508,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
       const rows = getSheetRows(workbookInstance, sheetName);
 
       if (rows.length < 2) {
-        setError('الملف فارغ أو لا يحتوي على بيانات');
+        setError('Ø§Ù„Ù…Ù„Ù ÙØ§Ø±Øº Ø£Ùˆ Ù„Ø§ ÙŠØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ Ø¨ÙŠØ§Ù†Ø§Øª');
         return;
       }
 
@@ -532,7 +532,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
       }
       setStep(2);
     } catch (uploadError) {
-      setError('تعذر قراءة الملف، تأكد أنه Excel أو CSV صالح');
+      setError('ØªØ¹Ø°Ø± Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ù…Ù„ÙØŒ ØªØ£ÙƒØ¯ Ø£Ù†Ù‡ Excel Ø£Ùˆ CSV ØµØ§Ù„Ø­');
       console.error('[SmartImporter.handleFileUpload]', uploadError);
     }
   };
@@ -570,7 +570,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
   const handleNextFromMapping = async () => {
     if (missingRequiredFields.length > 0) {
-      setError(`الحقول الإلزامية غير مرتبطة: ${missingRequiredFields.map((field) => field.label).join('، ')}`);
+      setError(`Ø§Ù„Ø­Ù‚ÙˆÙ„ Ø§Ù„Ø¥Ù„Ø²Ø§Ù…ÙŠØ© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø©: ${missingRequiredFields.map((field) => field.label).join('ØŒ ')}`);
       return;
     }
 
@@ -625,7 +625,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
     if (!caseData.title) {
       const titleParts = [caseData.plaintiffName, caseData.defendantName].filter(Boolean);
-      caseData.title = titleParts.length > 0 ? titleParts.join(' ضد ') : caseData.caseNumber;
+      caseData.title = titleParts.length > 0 ? titleParts.join(' Ø¶Ø¯ ') : caseData.caseNumber;
     }
 
     ['lastSessionDate', 'nextSessionDate', 'firstInstanceDate'].forEach((dateField) => {
@@ -639,7 +639,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
   const executeImport = async () => {
     if (!workspaceId) {
-      setError('لا يوجد workspace محدد');
+      setError('Ù„Ø§ ÙŠÙˆØ¬Ø¯ workspace Ù…Ø­Ø¯Ø¯');
       return;
     }
 
@@ -704,7 +704,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                 if (syncMode === 'smart' || syncMode === 'update_only') {
                   const updates = {};
                   Object.entries(caseData).forEach(([fieldKey, value]) => {
-                    if (value && value !== '—' && value !== 'undefined') {
+                    if (value && value !== 'â€”' && value !== 'undefined') {
                       if (!['flags', 'sessionsHistory', 'history', 'taskIds'].includes(fieldKey)) {
                         updates[fieldKey] = value;
                       }
@@ -743,7 +743,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
               }
             } catch (rowError) {
               const rowNumber = index + batchIndex + 2;
-              result.errors.push(`صف ${rowNumber}: ${rowError.message}`);
+              result.errors.push(`ØµÙ ${rowNumber}: ${rowError.message}`);
             }
           })
         );
@@ -752,7 +752,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
         setImportProgress(nextProgress);
       }
     } catch (importError) {
-      result.errors.push(importError.message || 'حدث خطأ غير متوقع أثناء الاستيراد');
+      result.errors.push(importError.message || 'Ø­Ø¯Ø« Ø®Ø·Ø£ ØºÙŠØ± Ù…ØªÙˆÙ‚Ø¹ Ø£Ø«Ù†Ø§Ø¡ Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯');
     } finally {
       setProcessing(false);
       setImportResult(result);
@@ -783,7 +783,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
   const requiredReady = missingRequiredFields.length === 0 && rawData.length > 0;
 
-  const headerColumns = useMemo(() => headers.map((header, index) => ({ label: header || `عمود ${index + 1}`, index })), [headers]);
+  const headerColumns = useMemo(() => headers.map((header, index) => ({ label: header || `Ø¹Ù…ÙˆØ¯ ${index + 1}`, index })), [headers]);
   const activeTabFields = (FIELD_TABS.find((tab) => tab.id === activeFieldTab)?.fields || [])
     .map((key) => SYSTEM_FIELDS.find((field) => field.key === key))
     .filter(Boolean);
@@ -798,14 +798,14 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
         switch (mode) {
           case 'add_only':
-            return `تمت إضافة ${importResult.added} قضية جديدة وتجاهل ${skippedDuplicates} قضية مكررة.`;
+            return `ØªÙ…Øª Ø¥Ø¶Ø§ÙØ© ${importResult.added} Ù‚Ø¶ÙŠØ© Ø¬Ø¯ÙŠØ¯Ø© ÙˆØªØ¬Ø§Ù‡Ù„ ${skippedDuplicates} Ù‚Ø¶ÙŠØ© Ù…ÙƒØ±Ø±Ø©.`;
           case 'update_only':
-            return `تم تحديث ${updatedDuplicates} قضية مكررة، وتم تجاهل ${importResult.skipped} سجلًا غير موجود مسبقًا.`;
+            return `ØªÙ… ØªØ­Ø¯ÙŠØ« ${updatedDuplicates} Ù‚Ø¶ÙŠØ© Ù…ÙƒØ±Ø±Ø©ØŒ ÙˆØªÙ… ØªØ¬Ø§Ù‡Ù„ ${importResult.skipped} Ø³Ø¬Ù„Ù‹Ø§ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯ Ù…Ø³Ø¨Ù‚Ù‹Ø§.`;
           case 'force_overwrite':
-            return `تمت إضافة ${importResult.added} قضية جديدة واستبدال ${overwrittenDuplicates} قضية مكررة بالكامل.`;
+            return `ØªÙ…Øª Ø¥Ø¶Ø§ÙØ© ${importResult.added} Ù‚Ø¶ÙŠØ© Ø¬Ø¯ÙŠØ¯Ø© ÙˆØ§Ø³ØªØ¨Ø¯Ø§Ù„ ${overwrittenDuplicates} Ù‚Ø¶ÙŠØ© Ù…ÙƒØ±Ø±Ø© Ø¨Ø§Ù„ÙƒØ§Ù…Ù„.`;
           case 'smart':
           default:
-            return `تمت إضافة ${importResult.added} قضية جديدة وتحديث ${updatedDuplicates} قضية مكررة.`;
+            return `ØªÙ…Øª Ø¥Ø¶Ø§ÙØ© ${importResult.added} Ù‚Ø¶ÙŠØ© Ø¬Ø¯ÙŠØ¯Ø© ÙˆØªØ­Ø¯ÙŠØ« ${updatedDuplicates} Ù‚Ø¶ÙŠØ© Ù…ÙƒØ±Ø±Ø©.`;
         }
       })()
     : '';
@@ -821,25 +821,25 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
         switch (mode) {
           case 'add_only':
             return [
-              { label: 'المكررات المكتشفة', value: detected, color: '#b45309' },
-              { label: 'المكررات المتجاهلة', value: skippedDuplicates, color: '#6b7280' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…ÙƒØªØ´ÙØ©', value: detected, color: '#b45309' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…ØªØ¬Ø§Ù‡Ù„Ø©', value: skippedDuplicates, color: '#6b7280' },
             ];
           case 'update_only':
             return [
-              { label: 'المكررات المكتشفة', value: detected, color: '#b45309' },
-              { label: 'المكررات المحدثة', value: updatedDuplicates, color: '#d97706' },
-              { label: 'السجلات المتجاهلة', value: importResult.skipped, color: '#6b7280' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…ÙƒØªØ´ÙØ©', value: detected, color: '#b45309' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…Ø­Ø¯Ø«Ø©', value: updatedDuplicates, color: '#d97706' },
+              { label: 'Ø§Ù„Ø³Ø¬Ù„Ø§Øª Ø§Ù„Ù…ØªØ¬Ø§Ù‡Ù„Ø©', value: importResult.skipped, color: '#6b7280' },
             ];
           case 'force_overwrite':
             return [
-              { label: 'المكررات المكتشفة', value: detected, color: '#b45309' },
-              { label: 'المكررات المستبدلة بالكامل', value: overwrittenDuplicates, color: '#dc2626' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…ÙƒØªØ´ÙØ©', value: detected, color: '#b45309' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…Ø³ØªØ¨Ø¯Ù„Ø© Ø¨Ø§Ù„ÙƒØ§Ù…Ù„', value: overwrittenDuplicates, color: '#dc2626' },
             ];
           case 'smart':
           default:
             return [
-              { label: 'المكررات المكتشفة', value: detected, color: '#b45309' },
-              { label: 'المكررات المحدثة', value: updatedDuplicates, color: '#d97706' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…ÙƒØªØ´ÙØ©', value: detected, color: '#b45309' },
+              { label: 'Ø§Ù„Ù…ÙƒØ±Ø±Ø§Øª Ø§Ù„Ù…Ø­Ø¯Ø«Ø©', value: updatedDuplicates, color: '#d97706' },
             ];
         }
       })()
@@ -852,21 +852,21 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
         if (!hasErrors) {
           return {
             tone: 'success',
-            title: 'تم الاستيراد بنجاح',
-            description: `تمت معالجة ${importResult.total} سجل: إضافة ${importResult.added}، تحديث ${importResult.updated}، تجاهل ${importResult.skipped}.`,
+            title: 'ØªÙ… Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø¨Ù†Ø¬Ø§Ø­',
+            description: `ØªÙ…Øª Ù…Ø¹Ø§Ù„Ø¬Ø© ${importResult.total} Ø³Ø¬Ù„: Ø¥Ø¶Ø§ÙØ© ${importResult.added}ØŒ ØªØ­Ø¯ÙŠØ« ${importResult.updated}ØŒ ØªØ¬Ø§Ù‡Ù„ ${importResult.skipped}.`,
           };
         }
         if (changed > 0) {
           return {
             tone: 'warning',
-            title: 'تم الاستيراد جزئياً مع وجود أخطاء',
-            description: `تمت إضافة ${importResult.added} وتحديث ${importResult.updated}، مع ${importResult.errors.length} خطأ و${importResult.skipped} سجل متجاهل.`,
+            title: 'ØªÙ… Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø¬Ø²Ø¦ÙŠØ§Ù‹ Ù…Ø¹ ÙˆØ¬ÙˆØ¯ Ø£Ø®Ø·Ø§Ø¡',
+            description: `ØªÙ…Øª Ø¥Ø¶Ø§ÙØ© ${importResult.added} ÙˆØªØ­Ø¯ÙŠØ« ${importResult.updated}ØŒ Ù…Ø¹ ${importResult.errors.length} Ø®Ø·Ø£ Ùˆ${importResult.skipped} Ø³Ø¬Ù„ Ù…ØªØ¬Ø§Ù‡Ù„.`,
           };
         }
         return {
           tone: 'error',
-          title: 'فشل الاستيراد',
-          description: `لم يتم حفظ أي سجلات. ظهرت ${importResult.errors.length} أخطاء أثناء معالجة الملف.`,
+          title: 'ÙØ´Ù„ Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯',
+          description: `Ù„Ù… ÙŠØªÙ… Ø­ÙØ¸ Ø£ÙŠ Ø³Ø¬Ù„Ø§Øª. Ø¸Ù‡Ø±Øª ${importResult.errors.length} Ø£Ø®Ø·Ø§Ø¡ Ø£Ø«Ù†Ø§Ø¡ Ù…Ø¹Ø§Ù„Ø¬Ø© Ø§Ù„Ù…Ù„Ù.`,
         };
       })()
     : null;
@@ -900,14 +900,14 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: 'var(--text-primary)' }}>📥 مستورد البيانات الذكي</h2>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: 'var(--text-primary)' }}>ðŸ“¥ Ù…Ø³ØªÙˆØ±Ø¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø°ÙƒÙŠ</h2>
             <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--primary)', background: 'var(--primary-light)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 9px' }}>
-              إدخال ومزامنة
+              Ø¥Ø¯Ø®Ø§Ù„ ÙˆÙ…Ø²Ø§Ù…Ù†Ø©
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-            {['اختر الملف', 'طابق الحقول', 'اختر نوع المزامنة', 'النتيجة'][Math.max(0, step - 1)]}
-            {fileName ? ` — ${fileName}` : ''}
+            {['Ø§Ø®ØªØ± Ø§Ù„Ù…Ù„Ù', 'Ø·Ø§Ø¨Ù‚ Ø§Ù„Ø­Ù‚ÙˆÙ„', 'Ø§Ø®ØªØ± Ù†ÙˆØ¹ Ø§Ù„Ù…Ø²Ø§Ù…Ù†Ø©', 'Ø§Ù„Ù†ØªÙŠØ¬Ø©'][Math.max(0, step - 1)]}
+            {fileName ? ` â€” ${fileName}` : ''}
           </div>
         </div>
 
@@ -929,7 +929,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                 color: currentStep === step ? 'white' : currentStep < step ? '#16a34a' : 'var(--text-muted)',
               }}
             >
-              {currentStep < step ? '✓' : currentStep}
+              {currentStep < step ? 'âœ“' : currentStep}
             </div>
           ))}
         </div>
@@ -957,13 +957,13 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
           borderRadius: 'var(--radius-sm)', padding: '8px 14px',
           marginBottom: 12, fontSize: 13, color: '#16a34a', fontWeight: 600
         }}>
-          ✅ تم استعادة إعدادات المطابقة السابقة لهذا النوع من الملفات
+          âœ… ØªÙ… Ø§Ø³ØªØ¹Ø§Ø¯Ø© Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø§Ù„Ù…Ø·Ø§Ø¨Ù‚Ø© Ø§Ù„Ø³Ø§Ø¨Ù‚Ø© Ù„Ù‡Ø°Ø§ Ø§Ù„Ù†ÙˆØ¹ Ù…Ù† Ø§Ù„Ù…Ù„ÙØ§Øª
         </div>
       )}
 
       {processing ? (
         <div style={{ textAlign: 'center', padding: '32px' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>جاري استيراد البيانات...</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Ø¬Ø§Ø±ÙŠ Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª...</div>
           <div style={{ width: '100%', height: 12, background: 'var(--border)', borderRadius: 6, overflow: 'hidden' }}>
             <div
               style={{
@@ -979,8 +979,8 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
       ) : importResult && step === 4 ? (
         <div style={{ padding: 20 }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 32 }}>{importOutcome?.tone === 'success' ? '✅' : importOutcome?.tone === 'warning' ? '⚠️' : '⛔'}</div>
-            <h3 style={{ margin: '8px 0' }}>{importOutcome?.title || 'اكتمل الاستيراد'}</h3>
+            <div style={{ fontSize: 32 }}>{importOutcome?.tone === 'success' ? 'âœ…' : importOutcome?.tone === 'warning' ? 'âš ï¸' : 'â›”'}</div>
+            <h3 style={{ margin: '8px 0' }}>{importOutcome?.title || 'Ø§ÙƒØªÙ…Ù„ Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯'}</h3>
           </div>
 
           {importOutcome && (
@@ -1031,10 +1031,10 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
             {[
-              { label: 'الإجمالي', value: importResult.total, color: 'var(--text-primary)' },
-              { label: 'تمت الإضافة', value: importResult.added, color: '#16a34a' },
-              { label: 'تم التحديث', value: importResult.updated, color: '#d97706' },
-              { label: 'تم التجاهل', value: importResult.skipped, color: '#6b7280' },
+              { label: 'Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ', value: importResult.total, color: 'var(--text-primary)' },
+              { label: 'ØªÙ…Øª Ø§Ù„Ø¥Ø¶Ø§ÙØ©', value: importResult.added, color: '#16a34a' },
+              { label: 'ØªÙ… Ø§Ù„ØªØ­Ø¯ÙŠØ«', value: importResult.updated, color: '#d97706' },
+              { label: 'ØªÙ… Ø§Ù„ØªØ¬Ø§Ù‡Ù„', value: importResult.skipped, color: '#6b7280' },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -1077,7 +1077,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
           {importResult.errors.length > 0 && (
             <details style={{ marginBottom: 12 }}>
               <summary style={{ cursor: 'pointer', fontSize: 13, color: '#dc2626' }}>
-                {importResult.errors.length} خطأ — انقر للتفاصيل
+                {importResult.errors.length} Ø®Ø·Ø£ â€” Ø§Ù†Ù‚Ø± Ù„Ù„ØªÙØ§ØµÙŠÙ„
               </summary>
               <div
                 style={{
@@ -1105,10 +1105,10 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                 window.location.reload();
               }}
             >
-              رائع — عرض القضايا
+              Ø±Ø§Ø¦Ø¹ â€” Ø¹Ø±Ø¶ Ø§Ù„Ù‚Ø¶Ø§ÙŠØ§
             </button>
             <button className="btn-secondary" onClick={resetImporter}>
-              استيراد ملف آخر
+              Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ù…Ù„Ù Ø¢Ø®Ø±
             </button>
           </div>
         </div>
@@ -1128,10 +1128,10 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 5 }}>
-                      اسحب/اختر ملف Excel للبدء
+                      Ø§Ø³Ø­Ø¨/Ø§Ø®ØªØ± Ù…Ù„Ù Excel Ù„Ù„Ø¨Ø¯Ø¡
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                      اختر ملف Excel أو CSV يحتوي على صف عناوين في أول سطر. بعد الاختيار سنطابق الأعمدة ثم نحدد طريقة المزامنة.
+                      Ø§Ø®ØªØ± Ù…Ù„Ù Excel Ø£Ùˆ CSV ÙŠØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ ØµÙ Ø¹Ù†Ø§ÙˆÙŠÙ† ÙÙŠ Ø£ÙˆÙ„ Ø³Ø·Ø±. Ø¨Ø¹Ø¯ Ø§Ù„Ø§Ø®ØªÙŠØ§Ø± Ø³Ù†Ø·Ø§Ø¨Ù‚ Ø§Ù„Ø£Ø¹Ù…Ø¯Ø© Ø«Ù… Ù†Ø­Ø¯Ø¯ Ø·Ø±ÙŠÙ‚Ø© Ø§Ù„Ù…Ø²Ø§Ù…Ù†Ø©.
                     </div>
                     <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)' }}>
                       <span style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 999, padding: '3px 9px' }}>XLSX</span>
@@ -1154,7 +1154,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                       cursor: 'pointer',
                     }}
                   >
-                    اختيار ملف للاستيراد
+                    Ø§Ø®ØªÙŠØ§Ø± Ù…Ù„Ù Ù„Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯
                     <input
                       type="file"
                       accept=".xlsx,.xls,.csv"
@@ -1167,7 +1167,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
               {sheetNames.length > 1 && (
                 <div className="form-group" style={{ marginBottom: 16 }}>
-                  <label className="form-label">ورقة العمل</label>
+                  <label className="form-label">ÙˆØ±Ù‚Ø© Ø§Ù„Ø¹Ù…Ù„</label>
                   <select
                     className="form-input"
                     value={selectedSheetName}
@@ -1184,7 +1184,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn-secondary" type="button" onClick={onClose}>
-                  إلغاء
+                  Ø¥Ù„ØºØ§Ø¡
                 </button>
               </div>
             </div>
@@ -1199,7 +1199,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                   if (count === 0) return null;
                   return (
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
-                      💾 {count} إعداد مطابقة محفوظ من ملفات سابقة
+                      ðŸ’¾ {count} Ø¥Ø¹Ø¯Ø§Ø¯ Ù…Ø·Ø§Ø¨Ù‚Ø© Ù…Ø­ÙÙˆØ¸ Ù…Ù† Ù…Ù„ÙØ§Øª Ø³Ø§Ø¨Ù‚Ø©
                     </div>
                   );
                 } catch {
@@ -1214,11 +1214,11 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                   marginBottom: 12, fontSize: 13, color: '#16a34a',
                   display: 'flex', alignItems: 'center', gap: 8
                 }}>
-                  <span style={{ fontSize: 16 }}>✅</span>
+                  <span style={{ fontSize: 16 }}>âœ…</span>
                   <div>
-                    <strong>تم استعادة إعدادات المطابقة السابقة</strong>
+                    <strong>ØªÙ… Ø§Ø³ØªØ¹Ø§Ø¯Ø© Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø§Ù„Ù…Ø·Ø§Ø¨Ù‚Ø© Ø§Ù„Ø³Ø§Ø¨Ù‚Ø©</strong>
                     <span style={{ fontWeight: 400, marginRight: 8, fontSize: 12 }}>
-                      لهذا النوع من الملفات تلقائياً
+                      Ù„Ù‡Ø°Ø§ Ø§Ù„Ù†ÙˆØ¹ Ù…Ù† Ø§Ù„Ù…Ù„ÙØ§Øª ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹
                     </span>
                   </div>
                   <button
@@ -1231,15 +1231,15 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                              borderRadius: 6, padding: '2px 10px', cursor: 'pointer',
                              fontFamily: 'Cairo', fontSize: 12, color: '#16a34a' }}
                   >
-                    إعادة الكشف التلقائي
+                    Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„ÙƒØ´Ù Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ
                   </button>
                 </div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>مطابقة الحقول</h3>
+                <h3 style={{ margin: 0, fontSize: 16 }}>Ù…Ø·Ø§Ø¨Ù‚Ø© Ø§Ù„Ø­Ù‚ÙˆÙ„</h3>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  اسحب العمود إلى الحقل أو اختره من القائمة
+                  Ø§Ø³Ø­Ø¨ Ø§Ù„Ø¹Ù…ÙˆØ¯ Ø¥Ù„Ù‰ Ø§Ù„Ø­Ù‚Ù„ Ø£Ùˆ Ø§Ø®ØªØ±Ù‡ Ù…Ù† Ø§Ù„Ù‚Ø§Ø¦Ù…Ø©
                 </div>
               </div>
 
@@ -1299,7 +1299,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>أعمدة الملف</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Ø£Ø¹Ù…Ø¯Ø© Ø§Ù„Ù…Ù„Ù</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
                     {headerColumns.map((header) => (
                       <div
@@ -1328,7 +1328,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>الحقول النظامية</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Ø§Ù„Ø­Ù‚ÙˆÙ„ Ø§Ù„Ù†Ø¸Ø§Ù…ÙŠØ©</div>
                   {activeTabFields.map((field) => (
                     <div
                       key={field.key}
@@ -1383,10 +1383,10 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                           background: fieldMap[field.key] !== undefined ? 'white' : '#fafafa',
                         }}
                       >
-                        <option value="">— غير مرتبط —</option>
+                        <option value="">â€” ØºÙŠØ± Ù…Ø±ØªØ¨Ø· â€”</option>
                         {headers.map((header, index) => (
                           <option key={index} value={index}>
-                            {header || `عمود ${index + 1}`}
+                            {header || `Ø¹Ù…ÙˆØ¯ ${index + 1}`}
                           </option>
                         ))}
                       </select>
@@ -1397,10 +1397,10 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
                 <button className="btn-secondary" type="button" onClick={() => setStep(1)}>
-                  رجوع
+                  Ø±Ø¬ÙˆØ¹
                 </button>
                 <button className="btn-primary" type="button" onClick={handleNextFromMapping} disabled={!requiredReady}>
-                  التالي
+                  Ø§Ù„ØªØ§Ù„ÙŠ
                 </button>
               </div>
             </div>
@@ -1409,9 +1409,9 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
           {step === 3 && (
             <div>
               <div style={{ marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>مراجعة + تحديد نوع المزامنة</h3>
+                <h3 style={{ margin: 0, fontSize: 16 }}>Ù…Ø±Ø§Ø¬Ø¹Ø© + ØªØ­Ø¯ÙŠØ¯ Ù†ÙˆØ¹ Ø§Ù„Ù…Ø²Ø§Ù…Ù†Ø©</h3>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  {previewRows.length} صفوف للمعاينة. السجلات المكررة ستُطابق على رقم الدعوى + السنة.
+                  {previewRows.length} ØµÙÙˆÙ Ù„Ù„Ù…Ø¹Ø§ÙŠÙ†Ø©. Ø§Ù„Ø³Ø¬Ù„Ø§Øª Ø§Ù„Ù…ÙƒØ±Ø±Ø© Ø³ØªÙØ·Ø§Ø¨Ù‚ Ø¹Ù„Ù‰ Ø±Ù‚Ù… Ø§Ù„Ø¯Ø¹ÙˆÙ‰ + Ø§Ù„Ø³Ù†Ø©.
                 </div>
               </div>
 
@@ -1446,7 +1446,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                       {SYSTEM_FIELDS.filter((field) => fieldMap[field.key] !== undefined).map((field) => (
                         <th key={field.key}>{field.label}</th>
                       ))}
-                      <th>الحالة</th>
+                      <th>Ø§Ù„Ø­Ø§Ù„Ø©</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1469,7 +1469,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                               formatCaseNumber(row[field.key], row.caseYear) :
                               field.key === 'lastSessionDate' || field.key === 'nextSessionDate' ?
                                 formatDisplayDate(row[field.key]) :
-                                row[field.key] || '—'}
+                                row[field.key] || 'â€”'}
                           </td>
                         ))}
                         <td>
@@ -1492,7 +1492,7 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
                                     : '#6b7280',
                             }}
                           >
-                            {row._status === 'duplicate' ? 'تحديث' : row._status === 'new' ? 'جديد' : 'تجاهل'}
+                            {row._status === 'duplicate' ? 'ØªØ­Ø¯ÙŠØ«' : row._status === 'new' ? 'Ø¬Ø¯ÙŠØ¯' : 'ØªØ¬Ø§Ù‡Ù„'}
                           </span>
                         </td>
                       </tr>
@@ -1503,10 +1503,10 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
                 <button className="btn-secondary" type="button" onClick={() => setStep(2)}>
-                  رجوع
+                  Ø±Ø¬ÙˆØ¹
                 </button>
                 <button className="btn-primary" type="button" onClick={executeImport} disabled={!requiredReady || processing}>
-                  تنفيذ الاستيراد
+                  ØªÙ†ÙÙŠØ° Ø§Ù„Ø§Ø³ØªÙŠØ±Ø§Ø¯
                 </button>
               </div>
             </div>
