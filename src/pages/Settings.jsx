@@ -25,7 +25,7 @@ const SETTINGS_TABS = [
   { id: 'audit', label: '🔍 سجل التدقيق', desc: 'سجل العمليات' },
   { id: 'subscription', label: '⭐ اشتراكي', desc: 'خطتك والاستخدام الحالي' },
   { id: 'admin', label: '👑 الأدمن', desc: 'إدارة الاشتراكات' },
-];
+].filter((tab) => tab.id !== 'admin');
 
 const DISPLAY_FORMAT_OPTIONS = [
   'DD/MM/YYYY',
@@ -354,6 +354,67 @@ function normalizeAutomationSettings(settings = {}, customFieldDefs = []) {
   };
 }
 
+function normalizeArray(values) {
+  return Array.isArray(values) ? values : [];
+}
+
+function normalizeTrimmedStringArray(values) {
+  return normalizeArray(values)
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+}
+
+function areTrimmedStringArraysEqual(previousValues, nextValues) {
+  const previous = normalizeTrimmedStringArray(previousValues);
+  const next = normalizeTrimmedStringArray(nextValues);
+  if (previous.length !== next.length) return false;
+  return previous.every((value, index) => value === next[index]);
+}
+
+function normalizeCustomFieldDefinitionsForComparison(definitions) {
+  return normalizeArray(definitions).map((field) => ({
+    id: String(field?.id || '').trim(),
+    label: String(field?.label || '').trim(),
+    type: String(field?.type || '').trim(),
+    required: Boolean(field?.required),
+    options: normalizeTrimmedStringArray(field?.options),
+  }));
+}
+
+function normalizeCustomReminderRulesForComparison(rules) {
+  return normalizeArray(rules).map((rule) => ({
+    condition1Field: String(rule?.condition1?.field || '').trim(),
+    condition1Keywords: normalizeTrimmedStringArray(rule?.condition1?.keywords),
+    condition2Field: String(rule?.condition2?.field || '').trim(),
+    condition2Enabled: Boolean(rule?.condition2?.enabled),
+    condition2Keywords: normalizeTrimmedStringArray(rule?.condition2?.keywords),
+    createTask: Boolean(rule?.actions?.createTask),
+    taskMessage: String(rule?.actions?.taskMessage || '').trim(),
+    updateField: Boolean(rule?.actions?.updateField),
+    targetField: String(rule?.actions?.targetField || '').trim(),
+    newValue: String(rule?.actions?.newValue || '').trim(),
+    doRollover: Boolean(rule?.actions?.doRollover),
+    targetRoute: String(rule?.actions?.targetRoute || '').trim(),
+  }));
+}
+
+function toStableSignatures(items) {
+  return normalizeArray(items).map((item) => JSON.stringify(item));
+}
+
+function areStableSignatureArraysEqual(previousSignatures, nextSignatures) {
+  if (previousSignatures.length !== nextSignatures.length) return false;
+  return previousSignatures.every((value, index) => value === nextSignatures[index]);
+}
+
+function getAddedRemovedCounts(previousSignatures, nextSignatures) {
+  const previousSet = new Set(previousSignatures);
+  const nextSet = new Set(nextSignatures);
+  const addedCount = [...nextSet].filter((item) => !previousSet.has(item)).length;
+  const removedCount = [...previousSet].filter((item) => !nextSet.has(item)).length;
+  return { addedCount, removedCount };
+}
+
 function Toggle({ value, onChange, label, disabled = false }) {
   return (
     <label
@@ -401,7 +462,19 @@ function Toggle({ value, onChange, label, disabled = false }) {
   );
 }
 
-function OptionEditor({ optionType, workspaceId, readOnly = false }) {
+function getWorkspaceOptionChangeType(previousItems = [], nextItems = []) {
+  const previousCount = Array.isArray(previousItems) ? previousItems.length : 0;
+  const nextCount = Array.isArray(nextItems) ? nextItems.length : 0;
+  const previousActiveCount = (Array.isArray(previousItems) ? previousItems : []).filter((item) => item?.isActive !== false).length;
+  const nextActiveCount = (Array.isArray(nextItems) ? nextItems : []).filter((item) => item?.isActive !== false).length;
+
+  if (nextCount > previousCount && nextActiveCount >= previousActiveCount) return 'add';
+  if (nextCount < previousCount) return 'remove';
+  if (nextCount === previousCount && nextActiveCount !== previousActiveCount) return 'toggle';
+  return 'mixed';
+}
+
+function OptionEditor({ optionType, workspaceId, userId, readOnly = false }) {
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -447,8 +520,24 @@ function OptionEditor({ optionType, workspaceId, readOnly = false }) {
 
   const save = async (newItems) => {
     if (readOnly) return;
+    const previousItems = Array.isArray(items) ? items : [];
     setItems(newItems);
     await storage.saveWorkspaceOptions(workspaceId, optionType.key, newItems);
+    try {
+      auditLogger.log(
+        workspaceId,
+        userId,
+        ACTION_TYPES.SETTINGS_CHANGE,
+        {
+          section: 'workspaceOptions',
+          action: 'workspaceOptionListUpdated',
+          optionType: optionType.key,
+          previousCount: previousItems.length,
+          nextCount: Array.isArray(newItems) ? newItems.length : 0,
+          changeType: getWorkspaceOptionChangeType(previousItems, newItems),
+        }
+      );
+    } catch {}
   };
 
   if (!loaded) {
@@ -636,6 +725,7 @@ export default function Settings() {
 
   const handleMemberRoleChange = async (member, nextRole) => {
     const memberId = String(member?.uid || member?.id || '').trim();
+    const previousRole = String(member?.role || '').trim();
     const ownerId = String(currentWorkspace?.ownerId || '').trim();
     if (!workspaceId || !memberId || memberId === ownerId) return;
 
@@ -643,6 +733,20 @@ export default function Settings() {
     setMemberFeedback({ type: '', text: '' });
     try {
       await storage.updateWorkspaceMemberRole(workspaceId, memberId, nextRole);
+      try {
+        auditLogger.log(
+          workspaceId,
+          userId,
+          ACTION_TYPES.SETTINGS_CHANGE,
+          {
+            section: 'members',
+            action: 'memberRoleUpdated',
+            memberId,
+            previousRole,
+            nextRole,
+          }
+        );
+      } catch {}
       setMembers((current) => current.map((item) => (
         String(item?.uid || item?.id || '') === memberId
           ? { ...item, role: nextRole }
@@ -661,11 +765,26 @@ export default function Settings() {
     const ownerId = String(currentWorkspace?.ownerId || '').trim();
     if (!workspaceId || !memberId || memberId === ownerId) return;
 
+    const previousActive = member?.isActive !== false;
     const nextActive = member?.isActive === false;
     setMemberSavingId(memberId);
     setMemberFeedback({ type: '', text: '' });
     try {
       await storage.setWorkspaceMemberActive(workspaceId, memberId, nextActive);
+      try {
+        auditLogger.log(
+          workspaceId,
+          userId,
+          ACTION_TYPES.SETTINGS_CHANGE,
+          {
+            section: 'members',
+            action: 'memberActiveUpdated',
+            memberId,
+            previousActive,
+            nextActive,
+          }
+        );
+      } catch {}
       setMembers((current) => current.map((item) => (
         String(item?.uid || item?.id || '') === memberId
           ? { ...item, isActive: nextActive }
@@ -686,21 +805,109 @@ export default function Settings() {
     if (!workspaceId || !canManageWorkspaceSettings) return;
     setSaving(true);
     try {
+      const previousIdentityKeywords = normalizeTrimmedStringArray(
+        Array.isArray(settings.identityKeywords)
+          ? settings.identityKeywords
+          : splitKeywords(settings.identityKeywords)
+      );
+      const previousCustomReminderRules = normalizeCustomReminderRulesForComparison(settings.customReminderRules);
+      const previousCustomReminderRuleSignatures = toStableSignatures(previousCustomReminderRules);
+      const previousCustomFieldDefinitions = normalizeCustomFieldDefinitionsForComparison(settings.customFieldDefinitions);
+      const previousCustomFieldSignatures = toStableSignatures(previousCustomFieldDefinitions);
+
       const next = normalizeAutomationSettings(normalizeDisplaySettings({
         ...settings,
         customFieldDefinitions: customFieldDefs,
       }), customFieldDefs);
       await storage.updateWorkspaceSettings(workspaceId, next);
+
+      const nextIdentityKeywords = normalizeTrimmedStringArray(next.identityKeywords);
+      const nextCustomReminderRules = normalizeCustomReminderRulesForComparison(next.customReminderRules);
+      const nextCustomReminderRuleSignatures = toStableSignatures(nextCustomReminderRules);
+      const nextCustomFieldDefinitions = normalizeCustomFieldDefinitionsForComparison(next.customFieldDefinitions);
+      const nextCustomFieldSignatures = toStableSignatures(nextCustomFieldDefinitions);
+
+      const customReminderRulesChanged = !areStableSignatureArraysEqual(
+        previousCustomReminderRuleSignatures,
+        nextCustomReminderRuleSignatures
+      );
+      const identityKeywordsChanged = !areTrimmedStringArraysEqual(
+        previousIdentityKeywords,
+        nextIdentityKeywords
+      );
+      const customFieldDefinitionsChanged = !areStableSignatureArraysEqual(
+        previousCustomFieldSignatures,
+        nextCustomFieldSignatures
+      );
+
       try {
-        auditLogger.log(
-          workspaceId,
-          userId,
-          ACTION_TYPES.SETTINGS_CHANGE,
-          {
-            section: 'settings',
-            source: 'automation_center',
-          }
-        );
+        let hasFineGrainedAudit = false;
+
+        if (customReminderRulesChanged) {
+          const { addedCount, removedCount } = getAddedRemovedCounts(
+            previousCustomReminderRuleSignatures,
+            nextCustomReminderRuleSignatures
+          );
+          auditLogger.log(
+            workspaceId,
+            userId,
+            ACTION_TYPES.SETTINGS_CHANGE,
+            {
+              section: 'customRules',
+              source: 'automation_center',
+              action: 'customReminderRulesUpdated',
+              previousCount: previousCustomReminderRules.length,
+              nextCount: nextCustomReminderRules.length,
+              addedCount,
+              removedCount,
+            }
+          );
+          hasFineGrainedAudit = true;
+        }
+
+        if (identityKeywordsChanged) {
+          auditLogger.log(
+            workspaceId,
+            userId,
+            ACTION_TYPES.SETTINGS_CHANGE,
+            {
+              section: 'customRules',
+              source: 'automation_center',
+              action: 'identityKeywordsUpdated',
+              previousCount: previousIdentityKeywords.length,
+              nextCount: nextIdentityKeywords.length,
+            }
+          );
+          hasFineGrainedAudit = true;
+        }
+
+        if (customFieldDefinitionsChanged) {
+          auditLogger.log(
+            workspaceId,
+            userId,
+            ACTION_TYPES.SETTINGS_CHANGE,
+            {
+              section: 'customFields',
+              source: 'automation_center',
+              action: 'customFieldDefinitionsUpdated',
+              previousCount: previousCustomFieldDefinitions.length,
+              nextCount: nextCustomFieldDefinitions.length,
+            }
+          );
+          hasFineGrainedAudit = true;
+        }
+
+        if (!hasFineGrainedAudit) {
+          auditLogger.log(
+            workspaceId,
+            userId,
+            ACTION_TYPES.SETTINGS_CHANGE,
+            {
+              section: 'settings',
+              source: 'automation_center',
+            }
+          );
+        }
       } catch {}
       setCustomFieldsDirty(false);
       setSettings(next);
@@ -760,6 +967,18 @@ export default function Settings() {
     setResettingWorkspace(true);
     try {
       await storage.clearWorkspaceData(workspaceId);
+      try {
+        auditLogger.log(
+          workspaceId,
+          userId,
+          ACTION_TYPES.SETTINGS_CHANGE,
+          {
+            section: 'admin',
+            action: 'resetWorkspace',
+            workspaceName: String(currentWorkspace?.name || settings.workspaceName || '').trim(),
+          }
+        );
+      } catch {}
       alert('تمت إعادة تهيئة مساحة العمل الحالية بنجاح.');
       window.location.reload();
     } catch (error) {
@@ -1554,7 +1773,7 @@ export default function Settings() {
               </div>
 
               {openOption === optType.key && (
-                <OptionEditor optionType={optType} workspaceId={workspaceId} readOnly={!canManageWorkspaceSettings} />
+                <OptionEditor optionType={optType} workspaceId={workspaceId} userId={userId} readOnly={!canManageWorkspaceSettings} />
               )}
             </div>
           ))}
@@ -1829,13 +2048,6 @@ export default function Settings() {
 
       {activeTab === 'audit' && (
         <AuditLogViewer workspaceId={workspaceId} />
-      )}
-
-      {activeTab === 'admin' && (
-        <AdminSubscriptionPanel
-          workspaceId={workspaceId}
-          currentWorkspace={currentWorkspace}
-        />
       )}
 
       {activeTab === 'import' && (
