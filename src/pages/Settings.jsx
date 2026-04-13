@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import storage from '@/data/Storage.js';
 import SmartImporter from '@/components/import/SmartImporter.jsx';
 import DataExporter from '@/components/export/DataExporter.jsx';
+import FeatureGate from '@/components/ui/FeatureGate.jsx';
 import auditLogger, { ACTION_TYPES } from '@/services/AuditLogger.js';
 import subscriptionManager from '@/services/SubscriptionManager.js';
 import {

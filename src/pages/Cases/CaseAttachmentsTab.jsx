@@ -4,6 +4,7 @@ import localFileIndex from '@/services/LocalFileIndex.js';
 import attachmentService from '@/services/AttachmentService.js';
 import { ATTACHMENT_TYPE_MAP } from '@/core/Constants.js';
 import SmartAttachmentUpload from '@/components/cases/SmartAttachmentUpload.jsx';
+import FeatureGate from '@/components/ui/FeatureGate.jsx';
 import subscriptionManager from '@/services/SubscriptionManager.js';
 
 const VIEW_MODES = [
@@ -176,7 +177,7 @@ export default function CaseAttachmentsTab({
     <div style={{ direction: 'rtl' }}>
 
       {/* ── Toolbar ── */}
-      <FeatureGate feature="cloudSync">
+      <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <button
             onClick={() => setShowUpload(true)}
@@ -185,6 +186,7 @@ export default function CaseAttachmentsTab({
           >
             📎 إضافة مرفق قانوني
           </button>
+          <FeatureGate feature="cloudSync" />
           <div style={{ display: 'flex', gap: 4 }}>
             {VIEW_MODES.map((m) => (
               <button key={m.id} onClick={() => setViewMode(m.id)}
@@ -199,7 +201,7 @@ export default function CaseAttachmentsTab({
             ))}
           </div>
         </div>
-      </FeatureGate>
+      </div>
 
       {/* ── Smart Upload Modal ── */}
       {showUpload && (
