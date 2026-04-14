@@ -1,3 +1,49 @@
+import React, { useRef, useState, useEffect } from 'react';
+import PortalDropdown from '@/components/ui/PortalDropdown.jsx';
+// Custom inline dropdown for table cell editing using Portal
+function InlineDropdown({ value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef();
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        style={{
+          width: '100%',
+          textAlign: 'right',
+          background: '#fffbeb',
+          border: '1px solid var(--primary)',
+          borderRadius: 4,
+          padding: '4px 6px',
+          fontFamily: 'Cairo',
+          fontSize: 13,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+        onClick={() => setOpen((v) => !v)}
+        tabIndex={0}
+      >
+        <span>{value || '—'}</span>
+        <span style={{ marginRight: 6, fontSize: 12, color: '#888' }}>▼</span>
+      </button>
+      <PortalDropdown
+        anchorRef={btnRef}
+        open={open}
+        options={options}
+        value={value}
+        onSelect={(opt) => {
+          onChange(opt);
+          setOpen(false);
+        }}
+        onClose={() => setOpen(false)}
+        width={btnRef.current?.offsetWidth || 160}
+      />
+    </>
+  );
+}
 import { SESSION_TYPE_LABELS } from '@/core/Constants.js';
 import CaseNumberBadge from '@/components/cases/CaseNumberBadge.jsx';
 import DateDisplay from '@/components/common/DateDisplay.jsx';
@@ -217,6 +263,7 @@ export default function SessionsList({
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
+                      position: (editMode && (col.key === 'decision' || col.key === 'sessionType')) ? 'relative' : undefined,
                     }}
                   >
                     {col.key === 'rollNumber' && !editMode ? (
@@ -247,35 +294,40 @@ export default function SessionsList({
                       />
                     ) : isEditableColumn(col.key) || (col.key === 'rollNumber' && editMode) ? (
                       <>
-                        <input
-                          list={col.key === 'decision' || col.key === 'sessionType' ? `options-${col.key}-${session.id}` : undefined}
-                          value={localEdits[session.id]?.[col.key] ?? session[col.key] ?? ''}
-                          onChange={(e) => {
-                            setLocalEdits((prev) => ({
-                              ...prev,
-                              [session.id]: { ...(prev[session.id] || {}), [col.key]: e.target.value },
-                            }));
-                          }}
-                          onBlur={(e) => {
-                            if (!['date', 'nextDate'].includes(col.key)) return;
-                            const formatted = formatDateInput(e.target.value);
-                            if (formatted === e.target.value) return;
-                            setLocalEdits((prev) => ({
-                              ...prev,
-                              [session.id]: { ...(prev[session.id] || {}), [col.key]: formatted },
-                            }));
-                          }}
-                          style={{
-                            width: '100%', padding: '4px 6px', border: '1px solid var(--primary)',
-                            borderRadius: 4, fontFamily: 'Cairo', fontSize: 13, background: '#fffbeb'
-                          }}
-                        />
-                        {(col.key === 'decision' || col.key === 'sessionType') && (
-                          <datalist id={`options-${col.key}-${session.id}`}>
-                            {(fieldOptions[col.key] || []).map((opt) => (
-                              <option key={opt} value={opt} />
-                            ))}
-                          </datalist>
+                        {(col.key === 'decision' || col.key === 'sessionType') ? (
+                          <InlineDropdown
+                            value={localEdits[session.id]?.[col.key] ?? session[col.key] ?? ''}
+                            options={fieldOptions[col.key] || []}
+                            onChange={(val) => {
+                              setLocalEdits((prev) => ({
+                                ...prev,
+                                [session.id]: { ...(prev[session.id] || {}), [col.key]: val },
+                              }));
+                            }}
+                          />
+                        ) : (
+                          <input
+                            value={localEdits[session.id]?.[col.key] ?? session[col.key] ?? ''}
+                            onChange={(e) => {
+                              setLocalEdits((prev) => ({
+                                ...prev,
+                                [session.id]: { ...(prev[session.id] || {}), [col.key]: e.target.value },
+                              }));
+                            }}
+                            onBlur={(e) => {
+                              if (!['date', 'nextDate'].includes(col.key)) return;
+                              const formatted = formatDateInput(e.target.value);
+                              if (formatted === e.target.value) return;
+                              setLocalEdits((prev) => ({
+                                ...prev,
+                                [session.id]: { ...(prev[session.id] || {}), [col.key]: formatted },
+                              }));
+                            }}
+                            style={{
+                              width: '100%', padding: '4px 6px', border: '1px solid var(--primary)',
+                              borderRadius: 4, fontFamily: 'Cairo', fontSize: 13, background: '#fffbeb'
+                            }}
+                          />
                         )}
                       </>
                     ) : (
