@@ -18,8 +18,8 @@ const FILTER_TABS = [
   { id: 'all', label: 'الكل' },
   { id: 'week', label: '📅 جلسات الأسبوع' },
   { id: 'upcoming', label: 'القادمة' },
-  { id: 'past', label: 'السابقة' },
   { id: 'unrouted', label: '⚠️ غير المرحلة' },
+  { id: 'inquiry', label: '🔍 استعلام' },
 ];
 
 const SESSION_TYPE_FILTERS = ['موضوع', 'فحص', 'مفوضين', 'تقرير', 'حكم', 'جديد', 'متداول'];

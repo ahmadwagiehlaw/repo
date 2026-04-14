@@ -1,61 +1,52 @@
-MIGRATION STATUS v2.1 — LawBase Stable Release
-2026-04-13
+MIGRATION STATUS v2.1-patch6 — LawBase Stable Release
+2026-04-14
 
-LawBase Tech Lead
+Sessions UI — patches applied
+- patch1: previousSession removed from DEFAULT_VISIBLE (SessionsList.jsx)
+- patch1: previousSession removed from onBlur date-format array (SessionsList.jsx)
+- patch2: sessionType + rollNumber saves wired in saveAllEdits (useSessionsData.js)
+- patch2: sessionType added to applyBulkFieldUpdate fieldMap (useSessionsData.js)
+- patch2: rollNumber added to isEditableColumn (useSessionsData.js)
+- patch3: sessionsHistory loop removed — Live view is one row per case (useSessionsData.js)
+- patch3: 'past' filter + tab removed (useSessionsData.js, Sessions.jsx)
+- patch3: previousSession removed from date search dead code (useSessionsData.js)
+- patch4: all cases appear in Live view regardless of lastSessionDate (useSessionsData.js)
+- patch4: 'استعلام' filter tab added (useSessionsData.js, Sessions.jsx)
+- patch5: arrayUnion guard removed — history always written (SessionRollover.js)
+- patch5: auto-promote nextSessionDate → lastSessionDate on rollover (SessionRollover.js)
+- patch5: daily session_roll archive document written on each rollover (SessionRollover.js)
+- patch6: rollNumber + sessionType added to ALLOWED_CASE_FIELDS (Storage.js)
+  — without this patch2 saves were silently dropped by sanitizeCasePayload
+
+SessionRollover workflow (current):
+  1. Write historyEntry to sessionsHistory (always)
+  2. Promote nextSessionDate → lastSessionDate, clear nextSessionDate
+  3. Write rollEntry to archive session_roll document (non-fatal)
+  4. Mark session as rolled over in sessions subcollection
+  5. Route case (next_session / judgments / archive)
+  6. Log action in case history
 
 Patches
-- P0 = 100% — Firebase compat + Contexts
-- P1 = 100% — Attachments + LocalFileIndex + CloudSync
-- P2 = 100% — Case Flags + Badges
-- P3 = 100% — Judgments + Agenda + Deadline Calc
-- P4 = 100% — Tasks UI + tooltip + manual icon
-- P5 = 100% — Workspace Switcher
-- P6 = 100% - Sessions print.css + workspace-name header verified in active Sessions print path
-- P7 = 100% — Archive
-- P8 = 100% — Session Rollover
+- P0–P8 = 100%
 - P9 = 90% — Templates Monolith
-- P10 = 100% — AI Panel + AssistantService + ContextBuilder
-- P11 = 100% — manifest + sw.js + CameraUpload + InstallPrompt + icon paths + drawer
-- P12 = 100% — Storage upload + firebase.js + signed URLs
-- P13 = 100% — AuditLogger + SubscriptionManager + FeatureGate + Settings wiring complete; ActivationRequest and SuperAdmin Firestore access fully routed through Storage.js; attachments and audit gating/runtime fixes complete; branch-specific verification complete
+- P10–P13 = 100%
 
-Completed / confirmed
-- PERF-3 completed — Cairo font via @fontsource/cairo + Google Fonts CDN
-- WIRE-1 completed — evaluateRules after mutations
-- WIRE-2 completed — sessionsHistory via arrayUnion only
-- WIRE-3 verified complete for this branch — CaseTasksTab.jsx contains no duplicated inspection-task logic; canonical isInspectionTask(task) exists in src/utils/caseUtils.js and no CaseTasksTab patch is needed
-- WIRE-4 completed — All ActivationRequest / SuperAdmin Firestore calls now go through Storage.js only:
-  - createActivationRequest()
-  - listWorkspaces()
-  - getWorkspaceCaseCount()
-  - updateWorkspacePlan()
-  - deleteWorkspaceMember()
-  - listActivationRequests()
-  - updateActivationRequestStatus()
-- WIRE-5 completed — fine-grained Settings audit and Settings UI cleanup
-- Attachments runtime fix completed — FeatureGate import restored in CaseAttachmentsTab.jsx using the actual branch path
-- Attachments UX fix completed — local offline attachment add/upload remains available for non-Pro; paid cloudSync notice narrowed to its own scope
-- Settings audit runtime fix completed — FeatureGate import restored in Settings.jsx for AuditLogViewer path
-- Settings mini-cleanup completed — unreachable AdminSubscriptionPanel dead code removed after confirming admin tab path is filtered/unreachable
-- Build restored and passing
-- P6 completed - Sessions print path verified: currentWorkspace?.name is passed from Sessions.jsx to SessionsPrintTable.jsx and rendered in the print-only header without affecting on-screen layout
-
-Known blockers / notes
-- No current build blocker reproduced
-- No new build error introduced from Settings.jsx, ActivationRequest.jsx, SuperAdmin.jsx, Storage.js, CaseAttachmentsTab.jsx, or CaseTasksTab.jsx
-- Admin tab remains intentionally filtered from SETTINGS_TABS in current branch
-- Stable Release, not Rescue Mode
-- Continue with safe mini-patches only; do not reopen PERF-3, signed URLs, or drawer unless a newly documented issue appears
+Known open items in Sessions
+- sessionsHistory display in CaseDetails — separate future task
 
 Files to watch
-- F-1: src/pages/Templates.jsx — 131KB
-- F-2: src/pages/Settings.jsx — large and sensitive; mini-patches only
+- F-1: src/pages/Templates.jsx
+- F-2: src/pages/Settings.jsx
 - F-3: src/pages/ActivationRequest.jsx
 - F-4: src/pages/SuperAdmin.jsx
-- F-5: src/data/Storage.js
+- F-5: src/data/Storage.js ← just patched
 - F-6: src/pages/Cases/CaseAttachmentsTab.jsx
 - F-7: src/components/cases/SmartAttachmentUpload.jsx
 - F-8: src/pages/Cases/CaseTasksTab.jsx
 - F-9: src/utils/caseUtils.js
+- F-10: src/pages/Sessions/SessionsList.jsx
+- F-11: src/pages/Sessions/useSessionsData.js
+- F-12: src/pages/Sessions/Sessions.jsx
+- F-13: src/workflows/SessionRollover.js
 
-END STATUS v2.1
+END STATUS v2.1-patch6

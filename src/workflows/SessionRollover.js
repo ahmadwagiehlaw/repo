@@ -127,15 +127,51 @@ export class SessionRollover {
 
       if (!historyEntry.snapshot) delete historyEntry.snapshot;
 
-      // 1. Archive session notes to case history
-      if (session.notes || session.decision || session.result) {
-        await this.storage.updateCase(workspaceId, session.caseId, {
-          sessionsHistory: firebase.firestore.FieldValue.arrayUnion(historyEntry),
-          lastSessionDate: session.date,
-          sessionResult: session.decision || session.result || '',
+
+      // 1. Archive session to case history — always
+      await this.storage.updateCase(workspaceId, session.caseId, {
+        sessionsHistory: firebase.firestore.FieldValue.arrayUnion(historyEntry),
+        lastSessionDate: session.date || '',
+        sessionResult: session.decision || session.result || '',
+        updatedAt: new Date().toISOString(),
+      });
+      results.archivedNotes = true;
+
+      // 2. Auto-promote: nextSessionDate becomes new lastSessionDate
+      await this.storage.updateCase(workspaceId, session.caseId, {
+        lastSessionDate: session.nextDate || '',
+        nextSessionDate: '',
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 3. Write to daily session_roll archive (grouped by session date)
+      const rollDate = session.date || 'undated';
+      const rollDocId = `roll_${rollDate}`;
+      const rollEntry = {
+        caseId: session.caseId,
+        caseNumber: session.caseNumber || resolvedCaseData?.caseNumber || '',
+        caseYear: session.caseYear || resolvedCaseData?.caseYear || '',
+        clientName: session.clientName || resolvedCaseData?.plaintiffName || resolvedCaseData?.clientName || '',
+        court: session.court || resolvedCaseData?.court || '',
+        sessionDate: session.date || '',
+        decision: session.decision || session.result || '',
+        sessionType: session.sessionType || '',
+        nextDate: session.nextDate || '',
+        notes: session.notes || '',
+        rolledAt: new Date().toISOString(),
+        route: options.route || 'next_session',
+      };
+      try {
+        await this.storage.updateArchiveDocument(workspaceId, rollDocId, {
+          type: 'session_roll',
+          sessionDate: rollDate,
+          title: `رول جلسة ${rollDate}`,
+          entries: firebase.firestore.FieldValue.arrayUnion(rollEntry),
           updatedAt: new Date().toISOString(),
         });
-        results.archivedNotes = true;
+      } catch (rollArchiveError) {
+        results.errors.push(`roll_archive_write_failed: ${rollArchiveError.message}`);
+        // non-fatal — do not rethrow
       }
 
       // Mark this session as rolled over
@@ -144,10 +180,10 @@ export class SessionRollover {
         rolledOverAt: new Date().toISOString(),
       });
 
-      // 2. Route case based on decision
+      // 4. Route case based on decision
       await this._routeCase(workspaceId, session, options.route, results);
 
-      // 3. Log in case history
+      // 5. Log in case history
       await this.storage.appendToHistory(workspaceId, session.caseId, {
         action: 'session_rollover',
         sessionId: session.id,

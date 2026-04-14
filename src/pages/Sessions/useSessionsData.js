@@ -186,63 +186,26 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
       const allSessions = [];
 
       (Array.isArray(allCases) ? allCases : []).forEach((caseItem) => {
-        const history = Array.isArray(caseItem.sessionsHistory)
-          ? caseItem.sessionsHistory
-          : [];
-
-        history.forEach((session, index) => {
-          allSessions.push({
-            id: session.id || `${caseItem.id}-session-${index}`,
-            caseId: caseItem.id,
-            rollNumber: session.rollNumber || getDerivedCaseRollNumber(caseItem),
-            caseNumber: caseItem.caseNumber,
-            caseYear: caseItem.caseYear,
-            clientName: caseItem.plaintiffName || caseItem.clientName || '',
-            defendantName: caseItem.defendantName || caseItem.defendant || '',
-            court: session.court || caseItem.court || '',
-            date: session.date || session.sessionDate || session.lastSessionDate || caseItem.lastSessionDate || '',
-            sessionType: session.sessionType || session.type || '',
-            decision: session.decision || session.result || session.decisions || '',
-            nextDate: session.nextDate || session.nextSessionDate || caseItem.nextSessionDate || '',
-            previousSession: session.previousSession || caseItem.previousSession || '',
-            agendaRoute: caseItem.agendaRoute || 'sessions',
-            status: caseItem.status || CASE_STATUS.ACTIVE,
-            sessionMinute: session.sessionMinute || caseItem.sessionMinute || '',
-            inspectionRequests: session.inspectionRequests || caseItem.inspectionRequests || '',
-            fileLocation: session.fileLocation || getCaseFileLocation(caseItem),
-            notes: session.notes || caseItem.notes || '',
-          });
+        allSessions.push({
+          id: `${caseItem.id}-current`,
+          caseId: caseItem.id,
+          rollNumber: getDerivedCaseRollNumber(caseItem),
+          caseNumber: caseItem.caseNumber,
+          caseYear: caseItem.caseYear,
+          clientName: caseItem.plaintiffName || caseItem.clientName || '',
+          defendantName: caseItem.defendantName || caseItem.defendant || '',
+          court: caseItem.court || '',
+          date: caseItem.lastSessionDate || '',
+          sessionType: getDerivedCaseSessionType(caseItem),
+          decision: getCaseSessionResult(caseItem),
+          nextDate: caseItem.nextSessionDate || '',
+          agendaRoute: caseItem.agendaRoute || 'sessions',
+          status: caseItem.status || CASE_STATUS.ACTIVE,
+          sessionMinute: caseItem.sessionMinute || '',
+          inspectionRequests: caseItem.inspectionRequests || '',
+          fileLocation: getCaseFileLocation(caseItem),
+          notes: caseItem.notes || '',
         });
-
-        if (caseItem.lastSessionDate) {
-          const alreadyExists = allSessions.some((entry) => (
-            entry.caseId === caseItem.id && entry.date === caseItem.lastSessionDate
-          ));
-
-          if (!alreadyExists) {
-            allSessions.push({
-              id: `${caseItem.id}-current`,
-              caseId: caseItem.id,
-              rollNumber: getDerivedCaseRollNumber(caseItem),
-              caseNumber: caseItem.caseNumber,
-              caseYear: caseItem.caseYear,
-              clientName: caseItem.plaintiffName || caseItem.clientName || '',
-              defendantName: caseItem.defendantName || caseItem.defendant || '',
-              court: caseItem.court || '',
-              date: caseItem.lastSessionDate,
-              sessionType: getDerivedCaseSessionType(caseItem),
-              decision: getCaseSessionResult(caseItem),
-              nextDate: caseItem.nextSessionDate || '',
-              previousSession: caseItem.previousSession || '',
-              agendaRoute: caseItem.agendaRoute || 'sessions',
-              status: caseItem.status || CASE_STATUS.ACTIVE,
-              sessionMinute: caseItem.sessionMinute || '',
-              inspectionRequests: caseItem.inspectionRequests || '',
-              fileLocation: getCaseFileLocation(caseItem),
-              notes: caseItem.notes || '',
-            });
-          }
-        }
       });
 
       setSessions(allSessions);
@@ -299,8 +262,8 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
         return String(s.nextDate || '') >= week.start && String(s.nextDate || '') <= week.end;
       }
       if (activeFilter === 'upcoming') return String(s.nextDate || '') >= today;
-      if (activeFilter === 'past') return String(s.date || '') < today;
       if (activeFilter === 'unrouted') return isDecisionUnrouted(s.decision, s);
+      if (activeFilter === 'inquiry') return !s.date;
       return true;
     });
 
@@ -313,7 +276,6 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
           return (
             String(s.date || '').includes(normalizedDate)
             || String(s.nextDate || '').includes(normalizedDate)
-            || String(s.previousSession || '').includes(normalizedDate)
           );
         }
 
@@ -546,7 +508,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
   }, [bulkRolloverLoading, loadSessionsFromCases, rollover, selectedRows, sessions, user?.displayName, workspaceId]);
 
   const isEditableColumn = useCallback((colKey) => editMode && [
-    'decision', 'nextDate', 'sessionType',
+    'decision', 'nextDate', 'sessionType', 'rollNumber',
     'notes', 'sessionMinute', 'inspectionRequests', 'fileLocation'
   ].includes(colKey), [editMode]);
 
@@ -570,6 +532,8 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
         Object.assign(caseUpdate, getJudgmentReservationCaseUpdate(fields.decision) || {});
       }
       if (fields.nextDate !== undefined) caseUpdate.nextSessionDate = fields.nextDate;
+      if (fields.sessionType !== undefined) caseUpdate.sessionType = fields.sessionType;
+      if (fields.rollNumber !== undefined) caseUpdate.rollNumber = fields.rollNumber;
       if (fields.notes !== undefined) caseUpdate.notes = fields.notes;
       if (fields.sessionMinute !== undefined) caseUpdate.sessionMinute = fields.sessionMinute;
       if (fields.inspectionRequests !== undefined) caseUpdate.inspectionRequests = fields.inspectionRequests;
@@ -598,6 +562,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     const fieldMap = {
       decision: { sessionResult: val },
       nextDate: { nextSessionDate: val },
+      sessionType: { sessionType: val },
       fileLocation: { fileLocation: val },
       notes: { notes: val },
     };

@@ -49,6 +49,7 @@ const ALLOWED_CASE_FIELDS = new Set([
   'status', 'judge', 'defendantAddress', 'joinedCases',
   'otherDefendants', 'chosenHeadquarters',
   'assignedCounsel', 'inspectionRequests', 'sessionPreparation', 'previousSession',
+  'rollNumber', 'sessionType',
   'firstInstanceNumber', 'firstInstanceCourt', 'firstInstanceDate', 'firstInstanceJudgment',
   'notes', 'flags', 'attachments', 'sessionsHistory',
   'dismissedInlineAlerts', 'snoozedInlineAlerts',

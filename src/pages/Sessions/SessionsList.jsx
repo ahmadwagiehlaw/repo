@@ -22,7 +22,7 @@ export const ALL_COLUMNS = [
 
 export const DEFAULT_VISIBLE = [
   'rollNumber', 'caseNumber', 'clientName', 'defendantName',
-  'previousSession', 'date', 'nextDate', 'decision', 'sessionType'
+  'date', 'nextDate', 'decision', 'sessionType'
 ];
 
 export default function SessionsList({
@@ -257,7 +257,7 @@ export default function SessionsList({
                             }));
                           }}
                           onBlur={(e) => {
-                            if (!['date', 'nextDate', 'previousSession'].includes(col.key)) return;
+                            if (!['date', 'nextDate'].includes(col.key)) return;
                             const formatted = formatDateInput(e.target.value);
                             if (formatted === e.target.value) return;
                             setLocalEdits((prev) => ({
