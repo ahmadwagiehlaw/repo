@@ -55,6 +55,18 @@ export const SYSTEM_FIELDS = [
     aliases: ['القرار', 'القرار/النتيجة', 'sessionresult', 'آخر قرار', 'قرار الجلسة', 'courtdecision', 'court decision'],
   },
   {
+    key: 'sessionRoll',
+    label: 'الرول',
+    required: false,
+    aliases: ['الرول', 'roll', 'رقم الرول', 'roll number', 'roll_no', 'rollno'],
+  },
+  {
+    key: 'sessionType',
+    label: 'نوع الجلسة',
+    required: false,
+    aliases: ['نوع الجلسة', 'session type', 'نوع_الجلسة', 'sessionType'],
+  },
+  {
     key: 'summaryDecision',
     label: 'الحكيم / ملخص الحكم',
     required: false,
@@ -202,7 +214,7 @@ const FIELD_TABS = [
   {
     id: 'sessions',
     label: 'سجل الجلسات',
-    fields: ['lastSessionDate', 'sessionResult', 'nextSessionDate', 'previousSession'],
+    fields: ['lastSessionDate', 'sessionResult', 'sessionRoll', 'sessionType', 'nextSessionDate', 'previousSession'],
   },
   {
     id: 'judgments',
