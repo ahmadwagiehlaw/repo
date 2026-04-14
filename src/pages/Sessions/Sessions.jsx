@@ -279,7 +279,7 @@ export default function Sessions() {
             onClick={() => (editMode ? saveAllEdits() : setEditMode(true))}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            {editMode ? '✅ حفظ التعديلات' : '✏️ تعديل'}
+            {editMode ? '✅ حفظ التعديلات' : '✏️ تحضير الجلسات'}
           </button>
 
           <span style={{ color: 'var(--text-muted)', fontSize: 12, alignSelf: 'center' }}>

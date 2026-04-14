@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import PortalDropdown from '@/components/ui/PortalDropdown.jsx';
 // Custom inline dropdown for table cell editing using Portal
-function InlineDropdown({ value, options, onChange, onKeyDown }) {
+function InlineDropdown({ value, options, onChange }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef();
   return (
@@ -24,7 +24,6 @@ function InlineDropdown({ value, options, onChange, onKeyDown }) {
           justifyContent: 'space-between',
         }}
         onClick={() => setOpen((v) => !v)}
-        onKeyDown={onKeyDown}
         tabIndex={0}
       >
         <span>{value || '—'}</span>
@@ -137,9 +136,11 @@ export default function SessionsList({
   };
 
   const handleCellKeyDown = (e, session, col) => {
-    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'd') return;
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (e.key.toLowerCase() !== 'd') return;
 
     e.preventDefault();
+    e.stopPropagation();
     const sourceVal = getPreviousValue(session.id, col.key);
     if (!sourceVal) return;
 
@@ -305,6 +306,7 @@ export default function SessionsList({
                       whiteSpace: 'nowrap',
                       position: (editMode && (col.key === 'decision' || col.key === 'sessionType')) ? 'relative' : undefined,
                     }}
+                    onKeyDown={(e) => handleCellKeyDown(e, session, col)}
                   >
                     {col.key === 'rollNumber' && !editMode ? (
                       <div style={{ width: colWidths.rollNumber || 70, textAlign: 'center' }}>
@@ -338,7 +340,6 @@ export default function SessionsList({
                           <InlineDropdown
                             value={localEdits[session.id]?.[col.key] ?? session[col.key] ?? ''}
                             options={fieldOptions[col.key] || []}
-                            onKeyDown={(e) => handleCellKeyDown(e, session, col)}
                             onChange={(val) => {
                               setLocalEdits((prev) => ({
                                 ...prev,
@@ -348,6 +349,7 @@ export default function SessionsList({
                           />
                         ) : (
                           <input
+                            type={['date', 'nextDate'].includes(col.key) ? 'date' : 'text'}
                             value={localEdits[session.id]?.[col.key] ?? session[col.key] ?? ''}
                             onChange={(e) => {
                               setLocalEdits((prev) => ({
@@ -355,19 +357,10 @@ export default function SessionsList({
                                 [session.id]: { ...(prev[session.id] || {}), [col.key]: e.target.value },
                               }));
                             }}
-                            onBlur={(e) => {
-                              if (!['date', 'nextDate'].includes(col.key)) return;
-                              const formatted = formatDateInput(e.target.value);
-                              if (formatted === e.target.value) return;
-                              setLocalEdits((prev) => ({
-                                ...prev,
-                                [session.id]: { ...(prev[session.id] || {}), [col.key]: formatted },
-                              }));
-                            }}
-                            onKeyDown={(e) => handleCellKeyDown(e, session, col)}
                             style={{
                               width: '100%', padding: '4px 6px', border: '1px solid var(--primary)',
-                              borderRadius: 4, fontFamily: 'Cairo', fontSize: 13, background: '#fffbeb'
+                              borderRadius: 4, fontFamily: 'Cairo', fontSize: 13, background: '#fffbeb',
+                              direction: ['date', 'nextDate'].includes(col.key) ? 'ltr' : undefined,
                             }}
                           />
                         )}
