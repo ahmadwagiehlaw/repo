@@ -49,4 +49,22 @@ Files to watch
 - F-12: src/pages/Sessions/Sessions.jsx
 - F-13: src/workflows/SessionRollover.js
 
+### P14 — Roll Number Sync Fix ✅ (2026-04-15)
+**المشكلة:** حقل الرول كان يُحفظ في Firestore كـ `sessionRoll` (SmartImporter)
+لكن `getDerivedCaseRollNumber` كانت تقرأ `rollNumber` فقط → العمود يظهر فارغاً.
+
+**الإصلاح:**
+- `caseCanonical.js`: getDerivedCaseRollNumber تقرأ الآن:
+  `rollNumber || sessionRoll || roll || rollNo` (fallback chain)
+- `SmartImporter.jsx`: key موحّد إلى `rollNumber`، aliases تشمل `sessionRoll`
+- `FIELD_TABS.sessions`: محدّث لـ `rollNumber`
+
+**الملفات المعدلة:**
+- `src/utils/caseCanonical.js`
+- `src/components/import/SmartImporter.jsx`
+
+**Side effects:** لا — sessionsHistory لم يُلمس، لا writes جديدة.
+**الخطوة التالية:** Acceptance Test → استيراد ملف بعمود "الرول" والتحقق من ظهوره.
+
+
 END STATUS v2.1-patch6

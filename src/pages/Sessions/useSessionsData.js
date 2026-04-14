@@ -176,7 +176,8 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
   // Cache clear helper
   const clearSessionsCache = useCallback(() => {
     try {
-      sessionStorage.removeItem(`lb_sessions_cases_${workspaceId}`);
+      sessionStorage.removeItem(`lb_sessions_cases_${workspaceId}`); // legacy key
+      sessionStorage.removeItem(`lb_sessions_cases_v2_${workspaceId}`); // new key
     } catch { /* ignore */ }
   }, [workspaceId]);
 
@@ -189,7 +190,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     setLoading(true);
     setError(null);
 
-    const CACHE_KEY = `lb_sessions_cases_${workspaceId}`;
+    const CACHE_KEY = `lb_sessions_cases_v2_${workspaceId}`;
     const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
     try {
@@ -203,7 +204,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
       } catch { /* ignore cache errors */ }
 
       if (!allCases) {
-        allCases = await storage.listCases(workspaceId, { limit: 100 });
+        allCases = await storage.listCases(workspaceId, { limit: 2000 });
         try {
           sessionStorage.setItem(CACHE_KEY, JSON.stringify({
             data: allCases,
@@ -213,8 +214,10 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
       }
 
       const allSessions = [];
-
+      const EXCLUDED_ROUTES = ['archive', 'judgments', 'chamber', 'referred'];
       (Array.isArray(allCases) ? allCases : []).forEach((caseItem) => {
+        const route = String(caseItem.agendaRoute || '').trim().toLowerCase();
+        if (EXCLUDED_ROUTES.includes(route)) return; // skip routed-out cases
         allSessions.push({
           id: `${caseItem.id}-current`,
           caseId: caseItem.id,
@@ -234,6 +237,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
           inspectionRequests: caseItem.inspectionRequests || '',
           fileLocation: getCaseFileLocation(caseItem),
           notes: caseItem.notes || '',
+          hasNoNextSession: !caseItem.nextSessionDate,
         });
       });
 
@@ -303,7 +307,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
         return String(s.date || '') >= startStr && String(s.date || '') <= end;
       }
       if (activeFilter === 'unrouted') return isDecisionUnrouted(s.decision, s);
-      if (activeFilter === 'inquiry') return !s.date;
+      if (activeFilter === 'inquiry') return !!s.hasNoNextSession;
       return true;
     });
 
@@ -357,9 +361,14 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     }
 
     result = [...result].sort((a, b) => {
-      const aVal = a[sortConfig.key] || '';
-      const bVal = b[sortConfig.key] || '';
-      const cmp = String(aVal).localeCompare(String(bVal), 'ar');
+      const aVal = a[sortConfig.key] ?? '';
+      const bVal = b[sortConfig.key] ?? '';
+      const aNum = Number(aVal);
+      const bNum = Number(bVal);
+      const isNumeric = !isNaN(aNum) && !isNaN(bNum) && aVal !== '' && bVal !== '';
+      const cmp = isNumeric
+        ? aNum - bNum
+        : String(aVal).localeCompare(String(bVal), 'ar');
       return sortConfig.dir === 'asc' ? cmp : -cmp;
     });
 

@@ -55,10 +55,10 @@ export const SYSTEM_FIELDS = [
     aliases: ['القرار', 'القرار/النتيجة', 'sessionresult', 'آخر قرار', 'قرار الجلسة', 'courtdecision', 'court decision'],
   },
   {
-    key: 'sessionRoll',
+    key: 'rollNumber',
     label: 'الرول',
     required: false,
-    aliases: ['الرول', 'roll', 'رقم الرول', 'roll number', 'roll_no', 'rollno'],
+    aliases: ['الرول', 'roll', 'رقم الرول', 'roll number', 'roll_no', 'rollno', 'sessionRoll', 'session roll'],
   },
   {
     key: 'sessionType',
@@ -214,7 +214,7 @@ const FIELD_TABS = [
   {
     id: 'sessions',
     label: 'سجل الجلسات',
-    fields: ['lastSessionDate', 'sessionResult', 'sessionRoll', 'sessionType', 'nextSessionDate', 'previousSession'],
+    fields: ['lastSessionDate', 'sessionResult', 'rollNumber', 'sessionType', 'nextSessionDate', 'previousSession'],
   },
   {
     id: 'judgments',
@@ -372,7 +372,7 @@ function getFileSignature(headers) {
     .join('|');
 }
 
-const MAPPING_STORAGE_KEY = 'lb_import_field_maps';
+const MAPPING_STORAGE_KEY = 'lb_import_field_maps_v2';
 
 function saveFieldMapping(headers, map) {
   const signature = getFileSignature(headers);
@@ -609,6 +609,11 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
   };
 
   const buildCaseDataFromRow = (row) => {
+        // Normalize legacy sessionRoll → rollNumber
+        if (!caseData.rollNumber && caseData.sessionRoll) {
+          caseData.rollNumber = caseData.sessionRoll;
+          delete caseData.sessionRoll;
+        }
     const caseData = {};
 
     SYSTEM_FIELDS.forEach((field) => {

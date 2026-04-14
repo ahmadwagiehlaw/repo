@@ -59,11 +59,24 @@ export function getDerivedCaseSessionType(caseData) {
 
 export function getDerivedCaseRollNumber(caseData) {
   const lastSession = getLastSessionSnapshot(caseData);
-  const historyValue = String(lastSession?.rollNumber || '').trim();
+  const historyValue = String(
+    lastSession?.rollNumber ||
+    lastSession?.sessionRoll ||
+    lastSession?.roll ||
+    lastSession?.rollNo ||
+    ''
+  ).trim();
   if (historyValue) return historyValue;
 
   // Read-only fallback for pre-canonicalized case documents.
-  return String(caseData?.rollNumber || '').trim();
+  return (
+    String(caseData?.rollNumber ||
+      caseData?.sessionRoll ||
+      caseData?.roll ||
+      caseData?.rollNo ||
+      ''
+    ).trim()
+  );
 }
 
 export function getSessionSnapshot(sessionData) {
