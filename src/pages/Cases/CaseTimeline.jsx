@@ -10,30 +10,113 @@ export default function CaseTimeline({
   dateDisplayOptions,
 }) {
   if (mode === 'sessions') {
+    const ROUTE_LABELS = {
+      next_session: 'جلسة قادمة',
+      judgments: 'أجندة الأحكام',
+      archive: 'أرشفة القضية',
+    };
+
     return (
-      <div style={{ display: 'grid', gap: '12px' }}>
-        <button
-          onClick={onAddSession}
-          className="btn-primary"
-          style={{ padding: '10px 16px', fontSize: '13px', marginBottom: '8px', alignSelf: 'flex-start' }}
-        >
-          + إضافة جلسة
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
+            سجل الجلسات — {sessions.length} جلسة
+          </span>
+          <button
+            onClick={onAddSession}
+            className="btn-primary"
+            style={{ padding: '7px 14px', fontSize: '12px' }}
+          >
+            + إضافة جلسة
+          </button>
+        </div>
 
         {sessions.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', padding: '20px', textAlign: 'center' }}>
-            لا توجد جلسات
+            لا توجد جلسات مسجلة بعد
           </div>
         ) : (
-          sessions.map((session, idx) => (
-            <div key={idx} style={{ padding: '12px', border: '1px solid #2563eb', borderLeft: '4px solid #2563eb', borderRadius: 'var(--radius-md)', background: '#eff6ff' }}>
-              <div style={{ fontWeight: 600, marginBottom: '4px', color: '#1e40af' }}>
-                <DateDisplay value={session.date} options={dateDisplayOptions} />
+          sessions.map((session, idx) => {
+            const isRolled = Boolean(session.route || session.archivedAt);
+            const borderColor = isRolled ? '#2563eb' : '#94a3b8';
+            const bgColor = isRolled ? '#eff6ff' : '#f8fafc';
+            const labelColor = isRolled ? '#1e40af' : '#475569';
+
+            return (
+              <div
+                key={session.sessionId || session.id || idx}
+                style={{
+                  padding: '14px 16px',
+                  border: `1px solid ${borderColor}`,
+                  borderRight: `4px solid ${borderColor}`,
+                  borderRadius: 'var(--radius-md)',
+                  background: bgColor,
+                }}
+              >
+                {/* Row 1: Date + badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 800, fontSize: '14px', color: labelColor }}>
+                    📅 <DateDisplay value={session.date || session.sessionDate} options={dateDisplayOptions} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {session.sessionType && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, padding: '2px 8px',
+                        background: '#dbeafe', color: '#1d4ed8', borderRadius: '999px',
+                      }}>
+                        {session.sessionType}
+                      </span>
+                    )}
+                    {isRolled && session.route && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, padding: '2px 8px',
+                        background: '#dcfce7', color: '#15803d', borderRadius: '999px',
+                      }}>
+                        ✓ {ROUTE_LABELS[session.route] || session.route}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Row 2: Decision */}
+                {(session.decision || session.sessionResult) && (
+                  <div style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: 600, marginBottom: '6px' }}>
+                    القرار: {session.decision || session.sessionResult}
+                  </div>
+                )}
+
+                {/* Row 3: Next date */}
+                {(session.nextDate || session.nextSessionDate) && (
+                  <div style={{ fontSize: '12px', color: '#0369a1', marginBottom: '4px' }}>
+                    الجلسة القادمة:{' '}
+                    <DateDisplay
+                      value={session.nextDate || session.nextSessionDate}
+                      options={dateDisplayOptions}
+                    />
+                  </div>
+                )}
+
+                {/* Row 4: Notes */}
+                {session.notes && (
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
+                    {session.notes}
+                  </div>
+                )}
+
+                {/* Row 5: Snapshot indicator */}
+                {session.snapshot && (
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    🗂️ snapshot محفوظ
+                    {session.archivedAt && (
+                      <span style={{ marginRight: '6px' }}>
+                        · <DateDisplay value={session.archivedAt} options={dateDisplayOptions} />
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: '13px', color: '#1e3a8a', marginBottom: '4px' }}>{session.sessionResult || '—'}</div>
-              {session.notes && <div style={{ fontSize: '12px', color: '#475569' }}>ملاحظات: {session.notes}</div>}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     );

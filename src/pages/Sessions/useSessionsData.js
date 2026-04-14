@@ -172,6 +172,14 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     localStorage.setItem('lb_field_defaults', JSON.stringify(next));
   }, [fieldDefaults]);
 
+
+  // Cache clear helper
+  const clearSessionsCache = useCallback(() => {
+    try {
+      sessionStorage.removeItem(`lb_sessions_cases_${workspaceId}`);
+    } catch { /* ignore */ }
+  }, [workspaceId]);
+
   const loadSessionsFromCases = useCallback(async () => {
     if (!workspaceId) {
       setSessions([]);
@@ -181,8 +189,29 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     setLoading(true);
     setError(null);
 
+    const CACHE_KEY = `lb_sessions_cases_${workspaceId}`;
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
     try {
-      const allCases = await storage.listCases(workspaceId, { limit: 500 });
+      let allCases = null;
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL) allCases = data;
+        }
+      } catch { /* ignore cache errors */ }
+
+      if (!allCases) {
+        allCases = await storage.listCases(workspaceId, { limit: 100 });
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+            data: allCases,
+            ts: Date.now(),
+          }));
+        } catch { /* ignore storage quota errors */ }
+      }
+
       const allSessions = [];
 
       (Array.isArray(allCases) ? allCases : []).forEach((caseItem) => {
@@ -246,8 +275,12 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
   }, [workspaceId]);
 
   useEffect(() => {
-    refreshArchiveIndex();
-  }, [refreshArchiveIndex]);
+    if (!workspaceId) return;
+    const timer = setTimeout(() => {
+      refreshArchiveIndex();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [workspaceId, refreshArchiveIndex]);
 
   useEffect(() => {
     setPage(1);
@@ -262,6 +295,13 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
         return String(s.nextDate || '') >= week.start && String(s.nextDate || '') <= week.end;
       }
       if (activeFilter === 'upcoming') return String(s.nextDate || '') >= today;
+      if (activeFilter === 'lastWeek') {
+        const end = today;
+        const start = new Date();
+        start.setDate(new Date().getDate() - 7);
+        const startStr = start.toISOString().split('T')[0];
+        return String(s.date || '') >= startStr && String(s.date || '') <= end;
+      }
       if (activeFilter === 'unrouted') return isDecisionUnrouted(s.decision, s);
       if (activeFilter === 'inquiry') return !s.date;
       return true;
@@ -456,11 +496,70 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
       setRollingOver(null);
       setRolloverRoute('next_session');
       await loadSessionsFromCases();
+      clearSessionsCache();
       alert('تم تحريك الجلسة بنجاح ✅');
     } catch (rolloverError) {
       alert(`تعذر تحريك الجلسة: ${rolloverError.message}`);
     }
-  }, [loadSessionsFromCases, rollover, user?.displayName, workspaceId]);
+  }, [loadSessionsFromCases, rollover, user?.displayName, workspaceId, clearSessionsCache]);
+
+
+  const printBulkSessions = useCallback((sessionsList) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const rows = sessionsList.map((s) => `
+      <tr>
+        <td>${s.caseNumber || ''}${s.caseYear ? '/' + s.caseYear : ''}</td>
+        <td>${s.clientName || '—'}</td>
+        <td>${s.court || '—'}</td>
+        <td>${s.date || '—'}</td>
+        <td>${s.nextDate || '—'}</td>
+        <td>${s.sessionType || '—'}</td>
+        <td>${s.decision || '—'}</td>
+        <td>${s.notes || '—'}</td>
+      </tr>
+    `).join('');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8"/>
+        <title>الجلسات المرحّلة</title>
+        <style>
+          body { font-family: 'Cairo', Arial, sans-serif;
+                 direction: rtl; padding: 20px; font-size: 13px; }
+          h2 { margin-bottom: 8px; }
+          .meta { color: #64748b; font-size: 12px; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #cbd5e1;
+                   padding: 8px 10px; text-align: right; }
+          th { background: #f8fafc; font-weight: 700; }
+          @media print { @page { size: A4 landscape; margin: 10mm; } }
+        </style>
+      </head>
+      <body>
+        <h2>الجلسات المرحّلة</h2>
+        <div class="meta">
+          عدد الجلسات: ${sessionsList.length} —
+          تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>رقم الدعوى</th><th>المدعي</th><th>المحكمة</th>
+              <th>الجلسة الحالية</th><th>الجلسة القادمة</th>
+              <th>نوع الجلسة</th><th>القرار</th><th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 400);
+  }, []);
 
   const handleBulkRollover = useCallback(async () => {
     if (bulkRolloverLoading) return;
@@ -478,6 +577,15 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     if (actionable.length === 0) {
       alert('لا توجد جلسات قابلة للترحيل ضمن التحديد الحالي');
       return;
+    }
+
+    const printFirst = window.confirm(
+      `سيتم ترحيل ${actionable.length} جلسة.\n\nهل تريد طباعة قائمة الجلسات قبل الترحيل؟\n\n` +
+      `(اضغط موافق للطباعة ثم الترحيل — اضغط إلغاء للترحيل مباشرة)`
+    );
+
+    if (printFirst) {
+      printBulkSessions(actionable.map((a) => a.session));
     }
 
     try {
@@ -545,6 +653,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     }
 
     await Promise.all(promises);
+    clearSessionsCache();
 
     setSessions((prev) => prev.map((s) => {
       const edits = localEdits[s.id];
@@ -554,7 +663,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
 
     setLocalEdits({});
     alert(`تم حفظ ${updates.length} تعديل ✅`);
-  }, [localEdits, sessions, workspaceId]);
+  }, [localEdits, sessions, workspaceId, clearSessionsCache]);
 
   const applyBulkFieldUpdate = useCallback(async (field, val) => {
     if (!val) return;

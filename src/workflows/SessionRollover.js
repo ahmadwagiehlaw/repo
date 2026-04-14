@@ -167,6 +167,7 @@ export class SessionRollover {
           sessionDate: rollDate,
           title: `رول جلسة ${rollDate}`,
           entries: firebase.firestore.FieldValue.arrayUnion(rollEntry),
+          uploadDate: rollDate,
           updatedAt: new Date().toISOString(),
         });
       } catch (rollArchiveError) {

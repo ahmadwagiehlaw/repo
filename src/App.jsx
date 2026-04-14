@@ -17,6 +17,8 @@ const Judgments = lazy(() => import('@/pages/Judgments.jsx'));
 const Tasks = lazy(() => import('@/pages/Tasks.jsx'));
 const Settings      = lazy(() => import('@/pages/Settings.jsx'));
 const SuperAdmin          = lazy(() => import('@/pages/SuperAdmin.jsx'));
+
+const SessionsLog = lazy(() => import('@/pages/SessionsLog/index.jsx'));
 const ActivationRequest   = lazy(() => import('@/pages/ActivationRequest.jsx'));
 
 // ── Suspense fallback ────────────────────────────────────
@@ -69,6 +71,7 @@ export default function App() {
                 <Route path="/archive" element={<Archive />} />
                 <Route path="/templates" element={<Templates />} />
                 <Route path="/judgments" element={<Judgments />} />
+                <Route path="/sessions-log" element={<SessionsLog />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/super-admin" element={<SuperAdmin />} />

@@ -18,6 +18,7 @@ const FILTER_TABS = [
   { id: 'all', label: 'الكل' },
   { id: 'week', label: '📅 جلسات الأسبوع' },
   { id: 'upcoming', label: 'القادمة' },
+  { id: 'lastWeek', label: '⏪ الأسبوع الماضي' },
   { id: 'unrouted', label: '⚠️ غير المرحلة' },
   { id: 'inquiry', label: '🔍 استعلام' },
 ];

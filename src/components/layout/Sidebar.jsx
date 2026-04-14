@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { path: '/cases', label: 'القضايا', icon: '📁' },
   { path: '/sessions', label: 'الجلسات', icon: '📅' },
   { path: '/judgments', label: 'الأحكام', icon: '⚖️' },
+  { path: '/sessions-log', label: 'أجندة الجلسات', icon: '🗓️' },
   { path: '/tasks', label: 'المهام', icon: '✓' },
   { path: '/archive', label: 'الأرشيف', icon: '📦' },
   { path: '/templates', label: 'النماذج', icon: '📝' },
