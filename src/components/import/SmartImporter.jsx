@@ -904,6 +904,31 @@ export default function SmartImporter({ workspaceId: workspaceIdProp, onClose, o
               إدخال ومزامنة
             </span>
           </div>
+
+          <div style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            fontSize: 12,
+            color: '#475569',
+            display: 'flex',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}>
+            <span>
+              📋 الحقول المستوردة:{' '}
+              {SYSTEM_FIELDS
+                .filter((field) => fieldMap[field.key] !== undefined)
+                .map((field) => field.label)
+                .join('، ') || '—'}
+            </span>
+            <span>
+              🕐 {new Date().toLocaleString('ar-EG')}
+            </span>
+          </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
             {['اختر الملف', 'طابق الحقول', 'اختر نوع المزامنة', 'النتيجة'][Math.max(0, step - 1)]}
             {fileName ? ` — ${fileName}` : ''}
