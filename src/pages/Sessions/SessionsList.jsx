@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import PortalDropdown from '@/components/ui/PortalDropdown.jsx';
 // Custom inline dropdown for table cell editing using Portal
-function InlineDropdown({ value, options, onChange }) {
+function InlineDropdown({ value, options, onChange, onKeyDown }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef();
   return (
@@ -24,6 +24,7 @@ function InlineDropdown({ value, options, onChange }) {
           justifyContent: 'space-between',
         }}
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={onKeyDown}
         tabIndex={0}
       >
         <span>{value || '—'}</span>
@@ -94,6 +95,7 @@ export default function SessionsList({
   isEditableColumn,
   localEdits,
   setLocalEdits,
+  copyRowFromPrevious,
   formatDateInput,
   fieldOptions,
   openSessionDate,
@@ -125,6 +127,28 @@ export default function SessionsList({
     );
   }
 
+  const getPreviousValue = (sessionId, colKey) => {
+    const idx = paginatedSessions.findIndex((s) => s.id === sessionId);
+    if (idx <= 0) return null;
+
+    const prevRow = paginatedSessions[idx - 1];
+    const prevEdits = localEdits[prevRow.id] || {};
+    return prevEdits[colKey] ?? prevRow[colKey];
+  };
+
+  const handleCellKeyDown = (e, session, col) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'd') return;
+
+    e.preventDefault();
+    const sourceVal = getPreviousValue(session.id, col.key);
+    if (!sourceVal) return;
+
+    setLocalEdits((prev) => ({
+      ...prev,
+      [session.id]: { ...(prev[session.id] || {}), [col.key]: sourceVal },
+    }));
+  };
+
   return (
     <div className="card sessions-live-card print-hide" style={{ overflowX: 'auto', padding: 0 }}>
       {editMode && (
@@ -144,6 +168,7 @@ export default function SessionsList({
       <table className="data-table sessions-table" style={{ minWidth: '980px', tableLayout: 'fixed', width: '100%' }}>
         <thead>
           <tr>
+            {editMode && <th className="print-hide" style={{ width: 34, textAlign: 'center' }} />}
             <th className="print-hide" style={{ width: 36, textAlign: 'center' }}>
               <input
                 type="checkbox"
@@ -228,7 +253,7 @@ export default function SessionsList({
         </thead>
 
         <tbody>
-          {paginatedSessions.map((session) => {
+          {paginatedSessions.map((session, idx) => {
             const week = getCurrentWeekRange();
             const isNextWeek = String(session.nextDate || '') >= week.start && String(session.nextDate || '') <= week.end;
             const linkedDoc = archiveIndex.get(session.nextDate) || archiveIndex.get(session.date) || archiveIndex.get(session.id);
@@ -242,6 +267,21 @@ export default function SessionsList({
                   borderRight: isNextWeek ? '3px solid var(--primary)' : undefined,
                 }}
               >
+                {editMode && (
+                  <td className="print-hide" style={{ width: 34, textAlign: 'center' }}>
+                    {idx > 0 ? (
+                      <button
+                        type="button"
+                        title="نسخ من الصف السابق"
+                        onClick={() => copyRowFromPrevious(session.id)}
+                        style={{ opacity: 0.6, fontSize: 14, padding: '2px 6px' }}
+                        className="print-hide"
+                      >
+                        ⎘
+                      </button>
+                    ) : null}
+                  </td>
+                )}
                 <td className="print-hide" style={{ width: 36, textAlign: 'center' }}>
                   <input
                     type="checkbox"
@@ -298,6 +338,7 @@ export default function SessionsList({
                           <InlineDropdown
                             value={localEdits[session.id]?.[col.key] ?? session[col.key] ?? ''}
                             options={fieldOptions[col.key] || []}
+                            onKeyDown={(e) => handleCellKeyDown(e, session, col)}
                             onChange={(val) => {
                               setLocalEdits((prev) => ({
                                 ...prev,
@@ -323,6 +364,7 @@ export default function SessionsList({
                                 [session.id]: { ...(prev[session.id] || {}), [col.key]: formatted },
                               }));
                             }}
+                            onKeyDown={(e) => handleCellKeyDown(e, session, col)}
                             style={{
                               width: '100%', padding: '4px 6px', border: '1px solid var(--primary)',
                               borderRadius: 4, fontFamily: 'Cairo', fontSize: 13, background: '#fffbeb'

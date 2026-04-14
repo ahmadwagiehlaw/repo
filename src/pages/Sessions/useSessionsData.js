@@ -18,6 +18,11 @@ import {
   getDerivedCaseSessionType,
 } from '@/utils/caseCanonical.js';
 
+const FULL_COPY_FIELDS = [
+  'decision', 'sessionType', 'nextDate',
+  'fileLocation', 'notes', 'inspectionRequests', 'sessionMinute',
+];
+
 export function useSessionsData({ allColumns, defaultVisible, decisionOptions, sessionTypeOptions }) {
   const { user } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -391,6 +396,27 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
   const totalPagesForUi = Math.max(1, totalPages);
   const safePage = Math.min(page, totalPagesForUi);
   const paginatedSessions = filteredSessions.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const copyRowFromPrevious = useCallback((sessionId) => {
+    const rows = paginatedSessions;
+    const idx = rows.findIndex((s) => s.id === sessionId);
+    if (idx <= 0) return;
+
+    const prev = rows[idx - 1];
+    const prevEdits = localEdits[prev.id] || {};
+
+    setLocalEdits((existing) => {
+      const currentEdits = existing[sessionId] || {};
+      const copied = {};
+
+      FULL_COPY_FIELDS.forEach((field) => {
+        const val = prevEdits[field] ?? prev[field];
+        if (val) copied[field] = val;
+      });
+
+      return { ...existing, [sessionId]: { ...currentEdits, ...copied } };
+    });
+  }, [paginatedSessions, localEdits]);
 
   const orderedVisibleColumns = useMemo(() => (
     colOrder
@@ -778,6 +804,7 @@ export function useSessionsData({ allColumns, defaultVisible, decisionOptions, s
     setPageSize: setPageSizePersisted,
     page,
     setPage,
+    copyRowFromPrevious,
     dateMode,
     setDateMode,
     dateFrom,

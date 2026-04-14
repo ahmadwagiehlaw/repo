@@ -110,6 +110,7 @@ export default function Sessions() {
     setPageSize,
     page,
     setPage,
+    copyRowFromPrevious,
     dateMode,
     setDateMode,
     dateFrom,
@@ -391,6 +392,7 @@ export default function Sessions() {
         isEditableColumn={isEditableColumn}
         localEdits={localEdits}
         setLocalEdits={setLocalEdits}
+        copyRowFromPrevious={copyRowFromPrevious}
         formatDateInput={formatDateInput}
         fieldOptions={fieldOptions}
         openSessionDate={openSessionDate}
