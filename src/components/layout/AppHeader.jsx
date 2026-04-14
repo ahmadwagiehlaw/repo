@@ -178,7 +178,7 @@ function getNotificationSnoozeUntil(hours) {
   return date.toISOString();
 }
 
-export default function AppHeader({ onMobileDrawerToggle }) {
+export default function AppHeader({ onMobileDrawerToggle, onToggleSidebar, collapsed }) {
   const { cases } = useCases();
   const { user, signOut } = useAuth();
   const { currentWorkspace } = useWorkspace();
@@ -378,33 +378,51 @@ export default function AppHeader({ onMobileDrawerToggle }) {
       zIndex: 200,
       direction: 'rtl',
     }}>
-      {/* Mobile drawer hamburger button (mobile only, RTL, minimal) */}
+      {/* Desktop collapse button — hidden on mobile */}
       <button
-        onClick={onMobileDrawerToggle}
+        onClick={onToggleSidebar}
+        className="desktop-only"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           background: 'none',
           border: 'none',
-          fontSize: 28,
-          color: '#64748b',
-          padding: 8,
-          marginLeft: 8,
+          fontSize: 16,
+          color: 'var(--text-secondary, #64748b)',
+          padding: '6px 8px',
           cursor: 'pointer',
           borderRadius: 8,
-          boxShadow: 'none',
-          // Only show on mobile screens
-          '@media (min-width: 900px)': { display: 'none' },
+          flexShrink: 0,
+        }}
+        title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+        aria-label={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+      >
+        ☰
+      </button>
+
+      {/* Mobile drawer button — hidden on desktop */}
+      <button
+        onClick={onMobileDrawerToggle}
+        className="mobile-drawer-toggle"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'none',
+          border: 'none',
+          fontSize: 20,
+          color: 'var(--text-secondary, #64748b)',
+          padding: '6px 8px',
+          cursor: 'pointer',
+          borderRadius: 8,
+          flexShrink: 0,
         }}
         aria-label="فتح القائمة الجانبية"
-        className="mobile-drawer-toggle"
       >
-        <span style={{ fontSize: 28 }}>☰</span>
+        <span>☰</span>
       </button>
-      <div className="app-header-logo" style={{ display: 'flex', alignItems: 'center', minWidth: '220px', textDecoration: 'none' }}>
-        <img src="/images/logo.png" alt="LawBase Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.05))' }} loading="lazy" />
-      </div>
+
 
       <div className="app-header-search" ref={searchRef} style={{ flex: 1, maxWidth: 500, position: 'relative', margin: '0 auto' }}>
         <div style={{ position: 'relative' }}>
@@ -598,19 +616,19 @@ export default function AppHeader({ onMobileDrawerToggle }) {
               cursor: 'pointer',
               fontSize: 20,
               padding: '4px 8px',
-              color: criticalNotifications.length > 0 ? '#dc2626' : 'var(--text-secondary)',
+              color: visibleNotifications.length === 0 ? 'var(--text-secondary)' : criticalNotifications.length > 0 ? '#dc2626' : '#d97706',
               position: 'relative',
               transition: 'all 0.15s',
             }}
             title="الإشعارات"
           >
-            {criticalNotifications.length > 0 ? '🔔' : '🔕'}
+            {visibleNotifications.length === 0 ? '🔕' : criticalNotifications.length > 0 ? '🚨' : '🔔'}
             {visibleNotifications.length > 0 && (
               <span style={{
                 position: 'absolute',
                 top: -5,
                 left: -5,
-                background: criticalNotifications.length > 0 ? '#dc2626' : 'var(--primary)',
+                background: criticalNotifications.length > 0 ? '#dc2626' : '#d97706',
                 color: 'white',
                 borderRadius: '50%',
                 width: 18,

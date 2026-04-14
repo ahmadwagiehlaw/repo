@@ -37,7 +37,15 @@ export default function AppLayout() {
       </div>
 
       <main style={{ flex: 1, minWidth: 0, background: 'var(--bg-page)', minHeight: '100vh', overflowX: 'hidden', overflowY: 'auto', position: 'relative' }}>
-        <AppHeader onMobileDrawerToggle={() => setDrawerOpen(true)} />
+        <AppHeader
+          onMobileDrawerToggle={() => setDrawerOpen(true)}
+          onToggleSidebar={() => {
+            const next = !collapsed;
+            setCollapsed(next);
+            localStorage.setItem('lb_sidebar_collapsed', String(next));
+          }}
+          collapsed={collapsed}
+        />
         <div style={{ padding: '24px' }}>
           {bootstrapping ? (
             <div className="empty-state" style={{ textAlign: 'center' }}>

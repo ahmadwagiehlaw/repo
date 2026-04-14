@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin.js';
-import subscriptionManager from '@/services/SubscriptionManager.js';
+import storage from '@/data/Storage.js';
 
 export const NAV_ITEMS = [
   { path: '/dashboard', label: 'لوحة التحكم', icon: '📊' },
@@ -23,7 +23,17 @@ export default function Sidebar({ collapsed = false, onToggleCollapse = () => {}
   const { user: currentUser, signOut } = useAuth();
   const { currentWorkspace, workspaces, switchWorkspace } = useWorkspace();
   const { isSuperAdmin } = useSuperAdmin();
-  const isPro = ['pro', 'team'].includes(subscriptionManager.plan);
+
+  const [brandName, setBrandName] = React.useState('LawBase');
+  const [brandSub, setBrandSub] = React.useState('نظام إدارة القضايا');
+
+  React.useEffect(() => {
+    if (!currentWorkspace?.id) return;
+    storage.getWorkspaceSettings(currentWorkspace.id).then((s) => {
+      if (s?.brandName) setBrandName(s.brandName);
+      if (s?.brandSub) setBrandSub(s.brandSub);
+    }).catch(() => {});
+  }, [currentWorkspace?.id]);
 
   useEffect(() => {
     if (!toast) return;
@@ -31,150 +41,287 @@ export default function Sidebar({ collapsed = false, onToggleCollapse = () => {}
     return () => clearTimeout(timeout);
   }, [toast]);
 
+  const navGroups = [
+    {
+      items: [
+        { path: '/dashboard', label: 'لوحة التحكم', icon: '📊' },
+        { path: '/cases', label: 'القضايا', icon: '📁' },
+      ]
+    },
+    {
+      items: [
+        { path: '/sessions', label: 'الجلسات', icon: '📅' },
+        { path: '/judgments', label: 'الأحكام', icon: '⚖️' },
+        { path: '/sessions-log', label: 'أجندة الجلسات', icon: '🗓️' },
+      ]
+    },
+    {
+      items: [
+        { path: '/tasks', label: 'المهام', icon: '✓' },
+        { path: '/archive', label: 'الأرشيف', icon: '📦' },
+        { path: '/templates', label: 'النماذج', icon: '📝' },
+      ]
+    },
+    {
+      items: [
+        { path: '/settings', label: 'الإعدادات', icon: '⚙️' },
+      ]
+    },
+  ];
+
   return (
-    <aside className="card" aria-label="الشريط الجانبي" style={{ width: '100%' }}>
-      <div>
-        <div style={{ marginBottom: '24px' }}>
-          {collapsed ? (
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div style={{ 
-                width: '46px', height: '46px', 
-                backgroundColor: 'var(--primary-light, #f0f9ff)', 
-                border: '1px solid var(--primary, #3b82f6)', 
-                borderRadius: '12px', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' 
-              }}>
-                <img src="/images/icon.png" alt="LawBase Icon" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-              </div>
+    <aside
+      aria-label="الشريط الجانبي"
+      style={{
+        width: '100%',
+        height: '100vh',
+        background: 'var(--bg-card, white)',
+        borderLeft: '1px solid var(--border, #e2e8f0)',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'Cairo, sans-serif',
+        direction: 'rtl',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Logo area */}
+      <div style={{
+        padding: collapsed ? '16px 8px' : '20px 16px',
+        borderBottom: '1px solid var(--border, #e2e8f0)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        minHeight: 72,
+      }}>
+        <img
+          src="/images/icon-192.png"
+          alt="LawBase"
+          style={{
+            width: collapsed ? 40 : 52,
+            height: collapsed ? 40 : 52,
+            objectFit: 'contain',
+            borderRadius: 10,
+            flexShrink: 0,
+          }}
+        />
+        {!collapsed && (
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: 17,
+              fontWeight: 800, lineHeight: 1.2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {brandName}
             </div>
-          ) : (
-            <div style={{ 
-              fontSize: '12px', fontWeight: '800', color: 'var(--text-muted)', 
-              letterSpacing: '0.5px', paddingRight: '4px' 
-            }}>
-              إدارة النظام
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 3,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {brandSub}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-
-        <div className="form-group workspace-switcher">
+      {/* Workspace switcher */}
+      {!collapsed && (
+        <div style={{ margin: '10px 10px 0', position: 'relative' }}>
           <button
             type="button"
-            className="btn-secondary"
             onClick={() => setShowDropdown((prev) => !prev)}
             aria-expanded={showDropdown}
-            title={currentWorkspace?.name || 'مساحة العمل'}
+            style={{
+              width: '100%',
+              background: 'var(--bg-secondary, #f1f5f9)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              color: 'var(--text-primary, #0f172a)',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontFamily: 'Cairo',
+            }}
           >
-            {currentWorkspace?.name ? `${currentWorkspace.name} • مساحة العمل` : 'مساحة العمل'}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentWorkspace?.name || 'مساحة العمل'}
+            </span>
+            <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 10, flexShrink: 0 }}>▼</span>
           </button>
-
-          {showDropdown && workspaces.length > 1 ? (
-            <div className="card" role="menu">
+          {showDropdown && workspaces.length > 1 && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, left: 0,
+              background: 'var(--bg-secondary, #f1f5f9)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 8, zIndex: 50, marginTop: 4, overflow: 'hidden',
+            }}>
               {workspaces.map((workspaceItem) => (
                 <button
                   key={workspaceItem.id}
                   type="button"
-                  className="nav-item"
                   onClick={async () => {
                     await switchWorkspace(workspaceItem.id);
                     setToast(`تم التبديل إلى: ${workspaceItem.name}`);
                     setShowDropdown(false);
                   }}
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: workspaceItem.id === currentWorkspace?.id
+                      ? '#fff8ec' : 'transparent',
+                    border: 'none', color: workspaceItem.id === currentWorkspace?.id
+                      ? '#b45309' : 'var(--text-secondary, #64748b)',
+                    fontSize: 13, cursor: 'pointer', display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center',
+                    fontFamily: 'Cairo',
+                    borderBottom: '1px solid var(--border-light, #f1f5f9)',
+                  }}
                 >
                   <span>{workspaceItem.name}</span>
-                  {workspaceItem.id === currentWorkspace?.id ? <span>✓</span> : null}
+                  {workspaceItem.id === currentWorkspace?.id && (
+                    <span style={{ color: '#f59e0b' }}>✓</span>
+                  )}
                 </button>
               ))}
             </div>
-          ) : null}
+          )}
         </div>
+      )}
 
-        <nav>
-          {NAV_ITEMS
-            .filter(item => !(item.highlight && isPro))
-            .map((item) => (
+      {/* Navigation */}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 8px', marginTop: 8 }}>
+        {navGroups.map((group, groupIdx) => (
+          <div key={groupIdx}>
+            {groupIdx > 0 && (
+              <div style={{
+                height: 1, background: 'var(--bg-secondary, #f1f5f9)',
+                margin: '6px 4px',
+              }} />
+            )}
+            {group.items.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === '/'}
-                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                end={item.path === '/dashboard'}
                 title={collapsed ? item.label : ''}
-                style={item.highlight ? {
-                  background: 'linear-gradient(135deg, #f59e0b20, #f59e0b10)',
-                  border: '1px solid #f59e0b40',
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: collapsed ? 0 : 10,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  padding: collapsed ? '10px 0' : '9px 12px',
                   borderRadius: 8,
-                  margin: '4px 0',
-                  color: '#d97706',
-                  fontWeight: 800,
-                } : {}}
+                  marginBottom: 2,
+                  textDecoration: 'none',
+                  fontSize: 13,
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#b45309' : 'var(--text-secondary, #64748b)',
+                  background: isActive ? '#fff8ec' : 'transparent',
+                  borderRight: isActive ? '3px solid #f59e0b' : '3px solid transparent',
+                  transition: 'all 0.15s',
+                })}
               >
-                <span aria-hidden="true">{item.icon}</span>
-                <span className="nav-label">{item.label}</span>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
+                {!collapsed && <span>{item.label}</span>}
               </NavLink>
-            ))
-          }
-          {isSuperAdmin && (
-            <NavLink
-              to="/super-admin"
-              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-              title={collapsed ? 'لوحة الأدمن' : ''}
-              style={{
-                background: 'linear-gradient(135deg, #7c3aed20, #7c3aed10)',
-                border: '1px solid #7c3aed40',
-                borderRadius: 8,
-                margin: '4px 0',
-                color: '#7c3aed',
-                fontWeight: 800,
-              }}
-            >
-              <span aria-hidden="true">👑</span>
-              <span className="nav-label">لوحة الأدمن</span>
-            </NavLink>
-          )}
-        </nav>
-      </div>
+            ))}
+          </div>
+        ))}
 
-      <div className="card">
-        <p className="case-number" title={currentUser?.displayName || 'مستخدم'}>
-          {collapsed ? '👤' : (currentUser?.displayName || 'مستخدم')}
-        </p>
-        {!collapsed && <p className="case-meta">{currentUser?.email || ''}</p>}
-        <button type="button" className="btn-secondary" onClick={signOut}>
-          {collapsed ? '⬋' : 'تسجيل الخروج'}
-        </button>
-      </div>
+        {isSuperAdmin && (
+          <NavLink
+            to="/super-admin"
+            title={collapsed ? 'لوحة الأدمن' : ''}
+            style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center',
+              gap: collapsed ? 0 : 10,
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              padding: collapsed ? '10px 0' : '9px 12px',
+              borderRadius: 8, marginTop: 6, textDecoration: 'none',
+              fontSize: 13, fontWeight: 700,
+              color: isActive ? '#a78bfa' : '#7c3aed',
+              background: isActive ? '#ede9fe' : '#f5f3ff',
+              borderRight: '3px solid transparent',
+            })}
+          >
+            <span style={{ fontSize: 15 }}>👑</span>
+            {!collapsed && <span>لوحة الأدمن</span>}
+          </NavLink>
+        )}
+      </nav>
 
+      {/* User footer */}
+      {!collapsed && (
+        <div style={{
+          padding: '10px 12px',
+          borderTop: '1px solid var(--border, #e2e8f0)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: '#fef3c7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#b45309', fontSize: 11, fontWeight: 700, flexShrink: 0,
+          }}>
+            {(currentUser?.displayName || currentUser?.email || 'م')
+              .split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: 'var(--text-primary, #0f172a)', fontSize: 11, fontWeight: 600,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {currentUser?.displayName || 'مستخدم'}
+            </div>
+            <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 10,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {currentUser?.email || ''}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={signOut}
+            style={{
+              background: 'none', border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 6, color: 'var(--text-muted, #94a3b8)', cursor: 'pointer',
+              fontSize: 11, padding: '4px 8px', fontFamily: 'Cairo',
+            }}
+          >
+            خروج
+          </button>
+        </div>
+      )}
+
+      {/* Collapse toggle */}
       <button
         type="button"
         onClick={onToggleCollapse}
         style={{
-          width: '100%', padding: '16px', background: 'transparent',
-          border: 'none', borderTop: '1px solid var(--border)',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--text-muted)', transition: 'all 0.2s ease', fontFamily: 'Cairo'
+          width: '100%', padding: '12px',
+          background: 'transparent',
+          border: 'none', borderTop: '1px solid var(--border, #e2e8f0)',
+          cursor: 'pointer', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: 6,
+          color: 'var(--text-muted, #94a3b8)', fontFamily: 'Cairo', fontSize: 12,
+          transition: 'color 0.15s',
         }}
-        onMouseEnter={(e) => { 
-          e.currentTarget.style.backgroundColor = 'var(--bg-hover, #f8fafc)'; 
-          e.currentTarget.style.color = 'var(--primary, #3b82f6)'; 
-        }}
-        onMouseLeave={(e) => { 
-          e.currentTarget.style.backgroundColor = 'transparent'; 
-          e.currentTarget.style.color = 'var(--text-muted)'; 
-        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary, #64748b)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted, #94a3b8)'; }}
         title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
       >
-        {collapsed ? (
-          <span style={{ fontSize: '18px' }}>⇥</span>
-        ) : (
-          <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            ⇤ طي القائمة
-          </span>
-        )}
+        <span>{collapsed ? '⇥' : '⇤'}</span>
+        {!collapsed && <span>طي القائمة</span>}
       </button>
 
-      {toast ? <div className="status-badge status-new">{toast}</div> : null}
+      {toast && (
+        <div style={{
+          position: 'absolute', bottom: 70, right: 12, left: 12,
+          background: 'var(--bg-secondary, #f1f5f9)',
+          border: '1px solid var(--border, #e2e8f0)',
+          borderRadius: 8, padding: '8px 12px',
+          color: 'var(--text-secondary, #64748b)', fontSize: 12, textAlign: 'center',
+        }}>
+          {toast}
+        </div>
+      )}
     </aside>
   );
 }

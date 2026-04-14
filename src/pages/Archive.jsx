@@ -13,7 +13,7 @@ const ARCHIVE_SECTIONS = [
   { id: 'custom', label: 'قسم مخصص', icon: '➕' },
 ];
 
-const DEFAULT_SESSION_TYPE_OPTIONS = ['عادي', 'استئناف', 'إداري', 'أحكام'];
+const DEFAULT_SESSION_TYPE_OPTIONS = ['فحص', 'موضوع', 'مرافعة', 'مفوضين', 'عاجل'];
 
 function mapSessionTypeLabel(type) {
   if (type === 'regular') return 'عادي';

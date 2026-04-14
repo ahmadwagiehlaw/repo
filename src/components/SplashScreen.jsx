@@ -31,9 +31,13 @@ export default function SplashScreen({ onComplete }) {
         transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: '64px', marginBottom: '16px' }}>⚖️</div>
+        <img
+          src="/images/icon-512.png"
+          alt="LawBase"
+          style={{ width: 96, height: 96, objectFit: 'contain', marginBottom: 16 }}
+        />
         <h1 style={{
-          color: '#f1f5f9', fontSize: '28px', fontWeight: '700',
+          color: '#f1f5f9', fontSize: '26px', fontWeight: '700',
           margin: 0, letterSpacing: '-0.5px',
         }}>
           LawBase

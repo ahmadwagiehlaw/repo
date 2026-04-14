@@ -198,6 +198,15 @@ body {
 	}
 }
 
+/* ── Header button visibility ── */
+.desktop-only { display: inline-flex; }
+.mobile-drawer-toggle { display: none !important; }
+
+@media (max-width: 768px) {
+	.desktop-only { display: none !important; }
+	.mobile-drawer-toggle { display: inline-flex !important; }
+}
+
 /* ── Design Tokens ── */
 :root {
 	--primary: #FF8C00;

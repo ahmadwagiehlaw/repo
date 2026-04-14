@@ -685,6 +685,8 @@ export default function Settings() {
   const [resettingWorkspace, setResettingWorkspace] = useState(false);
   const [customFieldDefs, setCustomFieldDefs] = useState([]);
   const [customFieldsDirty, setCustomFieldsDirty] = useState(false);
+  const [brandName, setBrandName] = useState('');
+  const [brandSub, setBrandSub] = useState('');
 
   const workspaceId = String(currentWorkspace?.id || '').trim();
   // TODO: replace ownerId fallback with authenticated user uid when AuthContext path is confirmed
@@ -703,6 +705,8 @@ export default function Settings() {
           ? next.customFieldDefinitions
           : [];
         setCustomFieldDefs(loadedDefs);
+        if (s?.brandName) setBrandName(s.brandName);
+        if (s?.brandSub) setBrandSub(s.brandSub);
       })
       .catch(() => {});
   }, [workspaceId]);
@@ -1089,6 +1093,56 @@ export default function Settings() {
             <option value="government_entity">جهة حكومية</option>
             <option value="legal_team">فريق قانوني</option>
           </select>
+        </div>
+
+        {/* Brand customization */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 14, fontWeight: 700,
+            color: 'var(--text-primary)', marginBottom: 12 }}>
+            🎨 تخصيص هوية التطبيق
+          </div>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600,
+                color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                اسم التطبيق (يظهر في الشريط الجانبي)
+              </label>
+              <input
+                type="text"
+                value={brandName ?? 'LawBase'}
+                onChange={(e) => {
+                  setBrandName(e.target.value);
+                  setSettings((s) => ({ ...s, brandName: e.target.value }));
+                }}
+                placeholder="LawBase"
+                maxLength={30}
+                disabled={!canManageWorkspaceSettings}
+                style={{ width: '100%', padding: '8px 12px',
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  fontFamily: 'Cairo', fontSize: 13 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600,
+                color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                النص الفرعي (يظهر تحت الاسم)
+              </label>
+              <input
+                type="text"
+                value={brandSub ?? 'نظام إدارة القضايا'}
+                onChange={(e) => {
+                  setBrandSub(e.target.value);
+                  setSettings((s) => ({ ...s, brandSub: e.target.value }));
+                }}
+                placeholder="نظام إدارة القضايا"
+                maxLength={40}
+                disabled={!canManageWorkspaceSettings}
+                style={{ width: '100%', padding: '8px 12px',
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  fontFamily: 'Cairo', fontSize: 13 }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
