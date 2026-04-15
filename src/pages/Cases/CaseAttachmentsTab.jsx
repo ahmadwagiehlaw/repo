@@ -126,12 +126,40 @@ export default function CaseAttachmentsTab({
   dateDisplayOptions,
   onSaveAttachment,
   onDeleteAttachment,
+  onSetCover,
 }) {
   const [viewMode, setViewMode] = useState('grid');
   const [showUpload, setShowUpload] = useState(false);
   const [openingId, setOpeningId] = useState(null);
   const [preview, setPreview] = useState(null);
   const [syncProgress, setSyncProgress] = useState({});
+
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        const id = `att-paste-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const saved = await localFileIndex.saveFile(id, file);
+        if (!saved) { alert('فشل حفظ الصورة المُلصقة'); return; }
+        const record = attachmentService.buildRecord({
+          url: '',
+          title: `صورة ملصوقة ${new Date().toLocaleTimeString('ar-EG')}`,
+          localId: id,
+          source: 'local',
+        });
+        record.attachmentType = 'image';
+        record.sessionDate = null;
+        record.autoLogged = false;
+        record.logTemplate = null;
+        await onSaveAttachment(record);
+        return;
+      }
+    }
+  };
 
   useEffect(() => {
     let unsub;
@@ -174,7 +202,11 @@ export default function CaseAttachmentsTab({
   };
 
   return (
-    <div style={{ direction: 'rtl' }}>
+    <div
+      style={{ direction: 'rtl' }}
+      onPaste={handlePaste}
+      tabIndex={0}
+    >
 
       {/* ── Toolbar ── */}
       <div>
@@ -275,6 +307,29 @@ export default function CaseAttachmentsTab({
                     {att.addedAt && <DateDisplay value={att.addedAt} options={dateDisplayOptions} />}
                   </div>
                 </div>
+                {onSetCover && (att.url || att.localId) && (
+                  <button
+                    title="تعيين كصورة بارزة للقضية"
+                    onClick={async () => {
+                      if (att.url) {
+                        onSetCover(att.url);
+                      } else if (att.localId) {
+                        alert('هذا الملف محفوظ محلياً فقط. لتعيينه كغلاف، ارفعه على Google Drive أولاً وأضف رابطه.');
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #f59e0b',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      color: '#f59e0b',
+                      padding: '3px 7px',
+                      fontFamily: 'Cairo',
+                      flexShrink: 0,
+                    }}
+                  >🖼 غلاف</button>
+                )}
                 <button onClick={() => handleDelete(att)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ef4444' }}>✕</button>
               </div>
             );

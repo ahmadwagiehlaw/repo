@@ -1,10 +1,3 @@
-// استخراج مرفقات الصور من المرفقات (attachments) للقضية
-function getImageAttachments(caseItem) {
-  if (!caseItem?.attachments) return [];
-  return caseItem.attachments.filter(att =>
-    String(att.url || att.title || att.name || '').match(/\.(png|jpe?g|gif|webp)($|\?)/i)
-  );
-}
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCases } from '@/contexts/CaseContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -147,8 +140,6 @@ function isDormantRole(value) {
 }
 
 export default function CasesList() {
-  const [coverSelectorFor, setCoverSelectorFor] = useState(null); // caseId
-  const [coverSelectorAnchor, setCoverSelectorAnchor] = useState(null); // زر الزناد
   const { cases, loading, filters, setFilter, updateFlags, loadCases } = useCases();
   const { currentWorkspace } = useWorkspace();
   const displaySettings = useDisplaySettings();
@@ -167,14 +158,6 @@ export default function CasesList() {
   const [selectedCases, setSelectedCases] = useState(new Set());
   const [isBulkRolling, setIsBulkRolling] = useState(false);
   const initializedDefaultFilter = useRef(false);
-
-  // إغلاق قائمة اختيار الغلاف عند الضغط خارج أي كارد
-  useEffect(() => {
-    if (!coverSelectorFor) return;
-    const handler = (e) => { setCoverSelectorFor(null); };
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [coverSelectorFor]);
 
   useEffect(() => {
     if (initializedDefaultFilter.current) return;
@@ -366,45 +349,30 @@ export default function CasesList() {
 
                   {/* Identity Row: Cover + Number + Delete */}
                   <div className="case-card-row case-card-row--identity" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {/* Cover image thumbnail + زر اختيار الغلاف */}
-                    <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {caseItem.coverImage ? (
-                        <img src={caseItem.coverImage} alt="غلاف" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                      ) : (
-                        <span style={{ fontSize: 24, opacity: 0.25 }}>📁</span>
-                      )}
-                      {getImageAttachments(caseItem).length > 0 && (
-                        <button
-                          title="اختيار صورة بارزة من المرفقات"
-                          style={{ position: 'absolute', bottom: 2, right: 2, background: 'rgba(15,23,42,0.7)', color: 'white', border: 'none', borderRadius: 4, fontSize: 10, padding: '2px 6px', cursor: 'pointer', zIndex: 2 }}
-                          onClick={e => { e.stopPropagation(); setCoverSelectorFor(caseItem.id); setCoverSelectorAnchor(e.currentTarget); }}
-                        >📷</button>
-                      )}
-                      {/* قائمة اختيار الغلاف */}
-                      {coverSelectorFor === caseItem.id && (
-                        <div style={{ position: 'absolute', top: 44, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.08)', zIndex: 100, minWidth: 120 }}
-                          onClick={e => e.stopPropagation()}>
-                          <div style={{ fontSize: 11, fontWeight: 700, padding: '6px 8px', color: '#0f172a', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>اختر صورة الغلاف</div>
-                          {getImageAttachments(caseItem).map((att, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid #f1f5f9' }}
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                setCoverSelectorFor(null);
-                                await storage.updateCase(workspaceId, caseItem.id, { coverImage: att.url });
-                                await loadCases(workspaceId, 1000);
-                              }}>
-                              <img src={att.url} alt={att.title || 'مرفق'} style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, border: '1px solid #e2e8f0' }} />
-                                                            <img src={att.url} alt={att.title || 'مرفق'} style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4, border: '1px solid #e2e8f0' }} loading="lazy" />
-                              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{att.title || `مرفق ${idx + 1}`}</span>
-                            </div>
-                          ))}
-                          <div style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444', cursor: 'pointer', textAlign: 'center' }}
-                            onClick={async (e) => { e.stopPropagation(); setCoverSelectorFor(null); await storage.updateCase(workspaceId, caseItem.id, { coverImage: null }); await loadCases(workspaceId, 1000); }}>
-                            إزالة الغلاف
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {caseItem.criticalHighlightUrl && (
+                      <a
+                        href={caseItem.criticalHighlightUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="فتح الملف / الإجراء المهم"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          background: '#1e293b',
+                          border: '1px solid #f59e0b',
+                          color: '#fbbf24',
+                          fontSize: 14,
+                          flexShrink: 0,
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >⚡</a>
+                    )}
 
                     <CaseNumberBadge caseNumber={caseItem.caseNumber} caseYear={caseItem.caseYear} caseData={caseItem} variant="pill" displayOrder={displaySettings.caseNumberDisplayOrder} className="case-number-pill" style={pillStyle} />
 
@@ -466,21 +434,7 @@ export default function CasesList() {
                   <div className="case-card-row case-card-row--footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', flexWrap: 'wrap', gap: 6 }}>
                     {fileLocation && (
                       <span className={`case-capsule ${fileWarning ? 'case-capsule--warn' : ''}`}>
-                        {caseItem.coverImage
-                          ? <img
-                              src={caseItem.coverImage}
-                              alt="غلاف"
-                              style={{
-                                width: 18,
-                                height: 18,
-                                borderRadius: '4px',
-                                objectFit: 'cover',
-                                verticalAlign: 'middle',
-                                marginInlineEnd: 4,
-                              }}
-                            />
-                          : <span style={{ marginInlineEnd: 4 }}>📁</span>
-                        }
+                        <span style={{ marginInlineEnd: 4 }}>📁</span>
                         {fileLocation}
                       </span>
                     )}
@@ -548,6 +502,4 @@ export default function CasesList() {
     </div>
   );
 }
-
-
 

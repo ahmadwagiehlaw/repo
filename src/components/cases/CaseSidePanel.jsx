@@ -325,14 +325,21 @@ export default function CaseSidePanel() {
                   ) : (
                     <div style={{ fontSize: '32px', opacity: 0.2, filter: 'grayscale(1)' }}>📁</div>
                   )}
-                  {imageAttachments.length > 0 && (
-                    <button onClick={() => setShowCoverSelector(!showCoverSelector)} style={{ position: 'absolute', bottom: 4, right: 4, left: 4, background: 'rgba(15, 23, 42, 0.75)', color: 'white', border: 'none', borderRadius: '4px', fontSize: 10, padding: '4px', cursor: 'pointer', backdropFilter: 'blur(2px)' }}>
-                      {displayCover && caseData.coverImage ? 'تغيير الغلاف' : 'تعيين غلاف'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setShowCoverSelector(!showCoverSelector)}
+                    style={{
+                      position: 'absolute', bottom: 4, right: 4, left: 4,
+                      background: 'rgba(15, 23, 42, 0.75)', color: 'white',
+                      border: 'none', borderRadius: '4px', fontSize: 10,
+                      padding: '4px', cursor: 'pointer', backdropFilter: 'blur(2px)'
+                    }}
+                  >
+                    {displayCover && caseData.coverImage ? '🖼 تغيير الغلاف' : '🖼 تعيين غلاف'}
+                  </button>
                   {showCoverSelector && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.95)', zIndex: 10, display: 'flex', flexDirection: 'column', padding: '4px', overflowY: 'auto' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4, textAlign: 'center', color: 'var(--primary)' }}>اختر الغلاف</div>
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.97)', zIndex: 10, display: 'flex', flexDirection: 'column', padding: '8px', overflowY: 'auto', gap: 4 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textAlign: 'center', color: 'var(--primary)', marginBottom: 4 }}>تعيين صورة الغلاف</div>
+                      {/* Image attachments */}
                       {imageAttachments.map((att, idx) => (
                         <div key={idx}
                           onClick={async () => {
@@ -345,10 +352,11 @@ export default function CaseSidePanel() {
                             }
                           }}
                           style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}>
-                          {att.localId ? '💾 ' : ''}{att.title || `صورة مرفقة ${idx + 1}`}
+                          {att.localId ? '💾 ' : '🔗 '}{att.title || `صورة ${idx + 1}`}
                         </div>
                       ))}
-                      <div onClick={() => handleUpdateCover(null)} style={{ padding: '6px 4px', fontSize: 10, cursor: 'pointer', color: '#ef4444', textAlign: 'center', fontWeight: 600 }}>إزالة الغلاف</div>
+                      <div onClick={() => handleUpdateCover(null)} style={{ padding: '6px 4px', fontSize: 10, cursor: 'pointer', color: '#ef4444', textAlign: 'center', fontWeight: 600 }}>🗑 إزالة الغلاف</div>
+                      <div onClick={() => setShowCoverSelector(false)} style={{ padding: '4px', fontSize: 10, cursor: 'pointer', color: '#94a3b8', textAlign: 'center' }}>إغلاق</div>
                     </div>
                   )}
                 </div>
@@ -356,6 +364,31 @@ export default function CaseSidePanel() {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <CaseNumberBadge caseNumber={caseData.caseNumber} caseYear={caseData.caseYear} caseData={caseData} displayOrder={displaySettings.caseNumberDisplayOrder} style={{ fontSize: 18 }} />
+                    {caseData?.criticalHighlightUrl && (
+                      <a
+                        href={caseData.criticalHighlightUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="فتح الملف / الإجراء المهم مباشرة"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: '#fbbf24',
+                          background: '#1e293b',
+                          border: '1px solid #f59e0b',
+                          borderRadius: '8px',
+                          padding: '5px 10px',
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ⚡ فتح الملف المهم
+                      </a>
+                    )}
                     <button
                       type="button"
                       onClick={handleToggleNotifications}

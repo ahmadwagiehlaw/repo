@@ -32,8 +32,8 @@ export default function CaseHeader({
 
   if (!caseData) return null;
 
-  const fileCoverUrl = getFeaturedImageUrl(caseData, 'fileCoverImageUrl');
-  const mainProcedureUrl = getFeaturedImageUrl(caseData, 'mainProcedureImageUrl');
+  const fileCoverUrl = getFeaturedImageUrl(caseData, 'coverImage');
+  const mainProcedureUrl = getFeaturedImageUrl(caseData, 'criticalHighlightUrl');
 
   const roleText = String(getCaseRoleCapacity(caseData)).trim();
   const isNoStake = roleText.includes('لا شأن') || roleText.includes('لا شان');
@@ -58,6 +58,9 @@ export default function CaseHeader({
     >
       <div style={{ display: 'flex', gap: '16px', alignItems: 'center', minWidth: 0, flex: 1 }}>
         <div
+          onClick={() => {
+            if (fileCoverUrl) window.open(fileCoverUrl, '_blank');
+          }}
           style={{
             width: '64px',
             height: '84px',
@@ -69,8 +72,9 @@ export default function CaseHeader({
             fontSize: '28px',
             flexShrink: 0,
             overflow: 'hidden',
+            cursor: fileCoverUrl ? 'pointer' : 'default',
           }}
-          title={fileCoverUrl ? 'غلاف الملف' : 'لم يتم تعيين غلاف للملف'}
+          title={fileCoverUrl ? 'فتح صورة الغلاف' : 'لم يتم تعيين صورة بارزة'}
         >
           {fileCoverUrl ? (
             <img src={fileCoverUrl} alt="غلاف الملف" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -145,6 +149,9 @@ export default function CaseHeader({
           </button>
         </div>
         <div
+          onClick={() => {
+            if (mainProcedureUrl) window.open(mainProcedureUrl, '_blank');
+          }}
           style={{
             width: '84px',
             height: '84px',
@@ -156,8 +163,9 @@ export default function CaseHeader({
             fontSize: '28px',
             flexShrink: 0,
             overflow: 'hidden',
+            cursor: mainProcedureUrl ? 'pointer' : 'default',
           }}
-          title={mainProcedureUrl ? 'أهم إجراء بارز' : 'لم يتم تعيين صورة للإجراء الأبرز'}
+          title={mainProcedureUrl ? 'فتح الملف/الإجراء المهم' : 'لم يتم تعيين ملف مهم'}
         >
           {mainProcedureUrl ? (
             <img src={mainProcedureUrl} alt="أهم إجراء" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />

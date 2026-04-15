@@ -11,6 +11,7 @@ import CaseTasksTab from '@/pages/Cases/CaseTasksTab.jsx';
 import CaseTimeline from '@/pages/Cases/CaseTimeline.jsx';
 import CaseProceduresTab from '@/pages/Cases/CaseProceduresTab.jsx';
 import useCaseDetails from '@/pages/Cases/useCaseDetails.js';
+import { storage } from '@/data/Storage.js';
 import { useDisplaySettings } from '@/hooks/useDisplaySettings.js';
 import { useSensitiveMode } from '@/hooks/useSensitiveMode.js';
 import { formatDisplayDate, getCaseNumberPillStyle, getDateDisplayOptions } from '@/utils/caseUtils.js';
@@ -91,6 +92,11 @@ export default function CaseDetails() {
     workspaceId,
     refreshCaseData,
   } = useCaseDetails();
+
+  const handleSetCover = async (url) => {
+    if (!url) return;
+    await storage.updateCase(workspaceId, caseData.id, { coverImage: url });
+  };
 
   const pillStyle = getCaseNumberPillStyle(caseData);
   const sortedSessions = [...(caseData?.sessionsHistory || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -573,6 +579,7 @@ export default function CaseDetails() {
         dateDisplayOptions={dateDisplayOptions}
         onSaveAttachment={handleSaveAttachment}
         onDeleteAttachment={handleDeleteAttachment}
+        onSetCover={handleSetCover}
       />
     );
   } else if (activeTab === 'documents') {
