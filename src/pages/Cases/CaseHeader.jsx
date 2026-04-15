@@ -27,6 +27,8 @@ export default function CaseHeader({
   displayOrder,
   sensitiveHidden,
   dateDisplayOptions,
+  onPickCover,
+  onPickCritical,
 }) {
   const navigate = useNavigate();
 
@@ -59,11 +61,13 @@ export default function CaseHeader({
       <div style={{ display: 'flex', gap: '16px', alignItems: 'center', minWidth: 0, flex: 1 }}>
         <div
           onClick={() => {
+            if (onPickCover) { onPickCover(); return; }
             if (fileCoverUrl) window.open(fileCoverUrl, '_blank');
           }}
           style={{
             width: '64px',
             height: '84px',
+            position: 'relative',
             borderRadius: '8px',
             background: '#1e293b',
             border: '1px solid #334155',
@@ -72,9 +76,9 @@ export default function CaseHeader({
             fontSize: '28px',
             flexShrink: 0,
             overflow: 'hidden',
-            cursor: fileCoverUrl ? 'pointer' : 'default',
+            cursor: 'pointer',
           }}
-          title={fileCoverUrl ? 'فتح صورة الغلاف' : 'لم يتم تعيين صورة بارزة'}
+          title={fileCoverUrl ? 'انقر لتغيير صورة الغلاف' : 'انقر لتعيين صورة الغلاف'}
         >
           {fileCoverUrl ? (
             <img src={fileCoverUrl} alt="غلاف الملف" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -150,6 +154,7 @@ export default function CaseHeader({
         </div>
         <div
           onClick={() => {
+            if (onPickCritical) { onPickCritical(); return; }
             if (mainProcedureUrl) window.open(mainProcedureUrl, '_blank');
           }}
           style={{
@@ -163,9 +168,9 @@ export default function CaseHeader({
             fontSize: '28px',
             flexShrink: 0,
             overflow: 'hidden',
-            cursor: mainProcedureUrl ? 'pointer' : 'default',
+            cursor: 'pointer',
           }}
-          title={mainProcedureUrl ? 'فتح الملف/الإجراء المهم' : 'لم يتم تعيين ملف مهم'}
+          title={mainProcedureUrl ? 'انقر لتغيير الملف المهم' : 'انقر لتعيين الملف المهم'}
         >
           {mainProcedureUrl ? (
             <img src={mainProcedureUrl} alt="أهم إجراء" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />

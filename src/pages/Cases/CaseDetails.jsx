@@ -31,6 +31,7 @@ import { isInspectionTask } from '@/utils/caseUtils.js';
 export default function CaseDetails() {
   const navigate = useNavigate();
   const [editInitialTab, setEditInitialTab] = useState('البيانات الأساسية');
+  const [pickerMode, setPickerMode] = useState(null);
   const displaySettings = useDisplaySettings();
   const { hidden: sensitiveHidden } = useSensitiveMode();
   const dateDisplayOptions = useMemo(() => getDateDisplayOptions(displaySettings), [displaySettings]);
@@ -94,8 +95,13 @@ export default function CaseDetails() {
   } = useCaseDetails();
 
   const handleSetCover = async (url) => {
-    if (!url) return;
+    if (url === undefined) return;
     await storage.updateCase(workspaceId, caseData.id, { coverImage: url });
+  };
+
+  const handleSetCritical = async (url) => {
+    if (url === undefined) return;
+    await storage.updateCase(workspaceId, caseData.id, { criticalHighlightUrl: url });
   };
 
   const pillStyle = getCaseNumberPillStyle(caseData);
@@ -629,6 +635,8 @@ export default function CaseDetails() {
           displayOrder={displaySettings.caseNumberDisplayOrder}
           dateDisplayOptions={dateDisplayOptions}
           sensitiveHidden={sensitiveHidden}
+          onPickCover={() => setPickerMode('cover')}
+          onPickCritical={() => setPickerMode('critical')}
         />
 
         {/* Tabs */}
@@ -660,6 +668,131 @@ export default function CaseDetails() {
           {tabContent}
         </div>
       </div>
+
+      {pickerMode && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center', padding: 20,
+          }}
+          onClick={() => setPickerMode(null)}
+        >
+          <div
+            style={{
+              background: 'white', borderRadius: 16,
+              padding: 24, maxWidth: 480, width: '100%',
+              maxHeight: '80vh', overflowY: 'auto',
+              direction: 'rtl', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>
+                {pickerMode === 'cover' ? '🖼 اختر صورة الغلاف' : '⚡ اختر الملف المهم'}
+              </h3>
+              <button
+                onClick={() => setPickerMode(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {(pickerMode === 'cover' ? caseData.coverImage : caseData.criticalHighlightUrl) && (
+              <div style={{ marginBottom: 16, padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>الحالي:</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                  <a
+                    href={pickerMode === 'cover' ? caseData.coverImage : caseData.criticalHighlightUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: 'var(--primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    🔗 فتح الحالي
+                  </a>
+                  <button
+                    onClick={async () => {
+                      if (pickerMode === 'cover') await handleSetCover(null);
+                      else await handleSetCritical(null);
+                      setPickerMode(null);
+                    }}
+                    style={{ fontSize: 11, color: '#ef4444', background: 'none', border: '1px solid #fecaca', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}
+                  >
+                    🗑 إزالة
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginBottom: 8 }}>
+              اختر من المرفقات:
+            </div>
+            {(caseData.attachments || []).length === 0 ? (
+              <div style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>
+                لا توجد مرفقات — أضف مرفقاً من تاب "أوراق الدعوى" أولاً
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(caseData.attachments || []).map((att, idx) => {
+                  const isSelected = pickerMode === 'cover'
+                    ? caseData.coverImage === att.url
+                    : caseData.criticalHighlightUrl === att.url;
+                  const isLocal = !att.url && att.localId;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={async () => {
+                        let url = att.url || '';
+                        if (!url && att.localId) {
+                          const { default: lfi } =
+                            await import('@/services/LocalFileIndex.js');
+                          const result = await lfi.openFile(att.localId);
+                          if (!result?.url) {
+                            alert('تعذّر فتح الملف المحلي');
+                            return;
+                          }
+                          url = result.url;
+                        }
+                        if (!url) return;
+                        if (pickerMode === 'cover') await handleSetCover(url);
+                        if (pickerMode === 'critical') await handleSetCritical(url);
+                        setPickerMode(null);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                        border: isSelected ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                        background: isSelected ? '#fffbeb' : isLocal ? '#f8fafc' : 'white',
+                        opacity: isLocal ? 0.6 : 1,
+                      }}
+                    >
+                      <span style={{ fontSize: 20 }}>
+                        {isLocal ? '💾' : String(att.url || '').match(/\.(png|jpe?g|gif|webp)/i)
+                          ? '🖼' : String(att.url || '').includes('.pdf') ? '📄' : '📎'}
+                      </span>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {att.title || `مرفق ${idx + 1}`}
+                        </div>
+                        {isLocal && (
+                          <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                            محلي — يحتاج رابط للتعيين
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <span style={{ color: '#f59e0b', fontWeight: 800 }}>✓</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Block Types Manager Modal */}
       {showBlockTypesManager && (
