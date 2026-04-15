@@ -389,7 +389,7 @@ export const storage = {
       updatedAt: now,
     };
 
-    await docRef.set(payload);
+    await docRef.set(payload, { merge: true });
     return payload;
   },
 
@@ -483,45 +483,52 @@ export const storage = {
       throw new Error('user.uid مطلوب');
     }
 
-    const existingProfile = await this.getUserProfile(userId);
-    const profileWorkspaceIds = uniqueStrings(existingProfile?.workspaceIds);
-    const profilePrimaryWorkspaceId = String(existingProfile?.primaryWorkspaceId || '').trim();
+    const directWorkspace = await this.getWorkspace(userId);
+    if (directWorkspace) {
+      await this.createOrUpdateUserProfile(user, {
+        workspaceIds: [userId],
+        primaryWorkspaceId: userId,
+      });
+      await this.addWorkspaceMember(userId, userId, {
+        uid: userId,
+        displayName: user?.displayName || '',
+        email: user?.email || '',
+        role: 'admin',
+        isActive: true,
+      });
+      return {
+        userProfile: await this.getUserProfile(userId),
+        workspaces: [directWorkspace],
+        currentWorkspace: directWorkspace,
+        createdWorkspace: null,
+      };
+    }
 
-    let ownedWorkspaces = [];
+    const existingProfile = await this.getUserProfile(userId);
+    const candidateIds = uniqueStrings([
+      ...(Array.isArray(existingProfile?.workspaceIds) ? existingProfile.workspaceIds : []),
+      String(existingProfile?.primaryWorkspaceId || ''),
+    ]);
+
+    let validWorkspaces = (
+      await Promise.all(candidateIds.map((id) => this.getWorkspace(id)))
+    ).filter(Boolean);
+
     try {
-      const ownedSnapshot = await _db
+      const ownedSnap = await _db
         .collection('workspaces')
         .where('ownerId', '==', userId)
         .get();
-      ownedWorkspaces = ownedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const owned = ownedSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      owned.forEach((ws) => {
+        if (!validWorkspaces.find((existingWorkspace) => existingWorkspace.id === ws.id)) {
+          validWorkspaces.push(ws);
+        }
+      });
     } catch (error) {
       console.error('[Storage.bootstrapUserWorkspace] owned workspaces lookup failed:', error);
     }
 
-    let memberWorkspaceIds = [];
-    try {
-      const memberSnapshot = await _db
-        .collectionGroup('members')
-        .where('uid', '==', userId)
-        .get();
-      memberWorkspaceIds = uniqueStrings(
-        memberSnapshot.docs.map((doc) => doc.ref.parent.parent?.id)
-      );
-    } catch (error) {
-      console.warn('[Storage.bootstrapUserWorkspace] member workspace lookup skipped:', error);
-    }
-
-    const candidateWorkspaceIds = uniqueStrings([
-      ...profileWorkspaceIds,
-      profilePrimaryWorkspaceId,
-      ...ownedWorkspaces.map((workspace) => workspace.id),
-      ...memberWorkspaceIds,
-    ]);
-
-    const candidateWorkspaces = await Promise.all(
-      candidateWorkspaceIds.map((workspaceId) => this.getWorkspace(workspaceId))
-    );
-    let validWorkspaces = candidateWorkspaces.filter(Boolean);
     let createdWorkspace = null;
 
     if (validWorkspaces.length === 0) {
@@ -530,47 +537,40 @@ export const storage = {
         || String(user?.email || '').split('@')[0]
         || ''
       ).trim();
-      createdWorkspace = await this.createWorkspace({
+      await _db
+        .collection('workspaces')
+        .doc(userId)
+        .set({
+          id: userId,
         name: workspaceLabel ? `مساحة عمل ${workspaceLabel}` : 'مساحة العمل',
         ownerId: userId,
         plan: 'free',
-      });
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      }, { merge: true });
+      createdWorkspace = await this.getWorkspace(userId);
       validWorkspaces = [createdWorkspace];
     }
 
-    const currentWorkspace = validWorkspaces.find(
-      (workspace) => String(workspace?.id || '') === profilePrimaryWorkspaceId
-    ) || validWorkspaces[0] || null;
-    const finalWorkspaceIds = uniqueStrings(validWorkspaces.map((workspace) => workspace?.id));
+    const preferUid = validWorkspaces.find((workspace) => workspace.id === userId) || validWorkspaces[0];
 
-    const ownedWorkspaceIds = new Set(
-      uniqueStrings([
-        ...ownedWorkspaces.map((workspace) => workspace.id),
-        createdWorkspace?.id,
-      ])
-    );
-
-    await Promise.all(
-      validWorkspaces
-        .filter((workspace) => ownedWorkspaceIds.has(String(workspace?.id || '')))
-        .map((workspace) => this.addWorkspaceMember(workspace.id, userId, {
-          uid: userId,
-          displayName: user?.displayName || existingProfile?.displayName || '',
-          email: user?.email || existingProfile?.email || '',
-          role: 'admin',
-          isActive: true,
-        }))
-    );
+    await this.addWorkspaceMember(preferUid.id, userId, {
+      uid: userId,
+      displayName: user?.displayName || existingProfile?.displayName || '',
+      email: user?.email || existingProfile?.email || '',
+      role: 'admin',
+      isActive: true,
+    });
 
     const userProfile = await this.createOrUpdateUserProfile(user, {
-      workspaceIds: finalWorkspaceIds,
-      primaryWorkspaceId: currentWorkspace?.id || '',
+      workspaceIds: [preferUid.id],
+      primaryWorkspaceId: preferUid.id,
     });
 
     return {
       userProfile,
-      workspaces: validWorkspaces,
-      currentWorkspace,
+      workspaces: [preferUid],
+      currentWorkspace: preferUid,
       createdWorkspace,
     };
   },
@@ -1281,6 +1281,30 @@ export const storage = {
     for (const collectionName of collectionsToClear) {
       await deleteCollectionDocs(workspaceRef.collection(collectionName));
     }
+  },
+
+  async deleteWorkspace(workspaceId) {
+    ensureDb();
+
+    const resolvedId = String(workspaceId || '').trim();
+    if (!resolvedId) throw new Error('workspaceId ظ…ط·ظ„ظˆط¨');
+
+    const workspaceRef = _db.collection('workspaces').doc(resolvedId);
+    const subCollections = [
+      'cases', 'sessions', 'judgments', 'tasks',
+      'archive', 'templates', 'options', 'settings', 'members',
+    ];
+
+    const casesSnap = await workspaceRef.collection('cases').get();
+    for (const caseDoc of casesSnap.docs) {
+      await deleteCollectionDocs(caseDoc.ref.collection('documents'));
+    }
+
+    for (const collectionName of subCollections) {
+      await deleteCollectionDocs(workspaceRef.collection(collectionName));
+    }
+
+    await workspaceRef.delete();
   },
 
   /**

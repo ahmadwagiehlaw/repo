@@ -132,8 +132,17 @@ export function WorkspaceProvider({ children }) {
       if (needsBootstrap) {
         dispatch({ type: 'WORKSPACE_LOADING', payload: { bootstrapping: true } });
         const bootstrapped = await storage.bootstrapUserWorkspace(authUser);
-        workspaces = Array.isArray(bootstrapped?.workspaces) ? bootstrapped.workspaces : [];
-        currentWorkspace = bootstrapped?.currentWorkspace || workspaces[0] || null;
+        const singleWorkspace = bootstrapped?.currentWorkspace || null;
+        workspaces = singleWorkspace ? [singleWorkspace] : [];
+        currentWorkspace = singleWorkspace;
+      }
+
+      if (workspaces.length > 1) {
+        const primary = workspaces.find(
+          (workspace) => String(workspace?.id || '') === primaryWorkspaceId
+        ) || workspaces[0];
+        workspaces = [primary];
+        currentWorkspace = primary;
       }
 
       if (currentWorkspace) {
