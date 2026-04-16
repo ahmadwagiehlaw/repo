@@ -16,8 +16,17 @@ function getCapacityStyle(capacity) {
 
 function getFeaturedImageUrl(caseData, fieldName) {
   const url = String(caseData?.[fieldName] || '').trim();
-  if (url && url.startsWith('http')) return url;
+  if (url && (
+    url.startsWith('http') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:')
+  )) return url;
   return '';
+}
+
+function isImageUrl(url) {
+  return url.startsWith('data:image') ||
+    /\.(png|jpe?g|gif|webp)($|\?)/i.test(url);
 }
 
 export default function CaseHeader({
@@ -36,7 +45,6 @@ export default function CaseHeader({
 
   const fileCoverUrl = getFeaturedImageUrl(caseData, 'coverImage');
   const mainProcedureUrl = getFeaturedImageUrl(caseData, 'criticalHighlightUrl');
-
   const roleText = String(getCaseRoleCapacity(caseData)).trim();
   const isNoStake = roleText.includes('لا شأن') || roleText.includes('لا شان');
 
@@ -58,36 +66,51 @@ export default function CaseHeader({
         transition: 'filter 0.3s ease',
       }}
     >
+      {/* ── الجانب الأيمن: الغلاف + بيانات القضية ── */}
       <div style={{ display: 'flex', gap: '16px', alignItems: 'center', minWidth: 0, flex: 1 }}>
+
+        {/* مربع صورة الغلاف */}
         <div
           onClick={() => {
-            if (onPickCover) { onPickCover(); return; }
-            if (fileCoverUrl) window.open(fileCoverUrl, '_blank');
+            if (onPickCover) onPickCover();
+            else if (fileCoverUrl) window.open(fileCoverUrl, '_blank');
           }}
           style={{
             width: '64px',
             height: '84px',
-            position: 'relative',
             borderRadius: '8px',
             background: '#1e293b',
             border: '1px solid #334155',
             display: 'grid',
             placeItems: 'center',
-            fontSize: '28px',
             flexShrink: 0,
             overflow: 'hidden',
-            cursor: 'pointer',
+            cursor: (onPickCover || fileCoverUrl) ? 'pointer' : 'default',
           }}
-          title={fileCoverUrl ? 'انقر لتغيير صورة الغلاف' : 'انقر لتعيين صورة الغلاف'}
+          title={onPickCover
+            ? (fileCoverUrl ? 'تغيير صورة الغلاف' : 'تعيين صورة الغلاف')
+            : (fileCoverUrl ? 'فتح صورة الغلاف' : 'لم يتم تعيين صورة بارزة')}
         >
           {fileCoverUrl ? (
-            <img src={fileCoverUrl} alt="غلاف الملف" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+            isImageUrl(fileCoverUrl) ? (
+              <img
+                src={fileCoverUrl}
+                alt="غلاف الملف"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                loading="lazy"
+              />
+            ) : (
+              <span style={{ fontSize: 32 }}>📄</span>
+            )
           ) : (
-            '📁'
+            <span style={{ fontSize: 28 }}>📁</span>
           )}
         </div>
 
+        {/* بيانات القضية */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+
+          {/* رقم القضية + الحالة */}
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <CaseNumberBadge
               caseNumber={caseData.caseNumber}
@@ -112,15 +135,34 @@ export default function CaseHeader({
             </span>
           </div>
 
-          <div style={{ fontSize: '16px', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', lineHeight: 1.3 }}>
-            <span style={{ color: '#60a5fa', filter: sensitiveHidden ? 'blur(4px)' : 'none' }}>{caseData.plaintiffName || '—'}</span>
-            <span style={{ fontSize: '11px', color: '#94a3b8', background: '#1e293b', padding: '2px 6px', borderRadius: '4px', border: '1px solid #334155' }}>ضد</span>
-            <span style={{ color: '#e2e8f0', filter: sensitiveHidden ? 'blur(4px)' : 'none' }}>{caseData.defendantName || '—'}</span>
+          {/* المدعي ضد المدعى عليه */}
+          <div style={{
+            fontSize: '16px', fontWeight: 800, color: 'white',
+            display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+            gap: '8px', lineHeight: 1.3,
+          }}>
+            <span style={{ color: '#60a5fa', filter: sensitiveHidden ? 'blur(4px)' : 'none' }}>
+              {caseData.plaintiffName || '—'}
+            </span>
+            <span style={{
+              fontSize: '11px', color: '#94a3b8', background: '#1e293b',
+              padding: '2px 6px', borderRadius: '4px', border: '1px solid #334155',
+            }}>
+              ضد
+            </span>
+            <span style={{ color: '#e2e8f0', filter: sensitiveHidden ? 'blur(4px)' : 'none' }}>
+              {caseData.defendantName || '—'}
+            </span>
           </div>
 
+          {/* الصفة + آخر إجراء */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             {caseData.roleCapacity && (
-              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '8px', fontWeight: 700, ...getCapacityStyle(roleText) }}>
+              <span style={{
+                fontSize: '11px', padding: '3px 10px',
+                borderRadius: '8px', fontWeight: 700,
+                ...getCapacityStyle(roleText),
+              }}>
                 صفة: {roleText}
               </span>
             )}
@@ -129,15 +171,23 @@ export default function CaseHeader({
               <DateDisplay value={caseData.lastSessionDate} options={dateDisplayOptions} />
             </div>
           </div>
+
         </div>
       </div>
 
+      {/* ── الجانب الأيسر: الأزرار + مربع الملف المهم ── */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+
+        {/* أزرار الإجراءات */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn-primary"
-            style={{ fontSize: '12px', padding: '8px 14px', background: '#0284c7', borderColor: '#0369a1', borderRadius: '6px', fontWeight: 700 }}
+            style={{
+              fontSize: '12px', padding: '8px 14px',
+              background: '#0284c7', borderColor: '#0369a1',
+              borderRadius: '6px', fontWeight: 700,
+            }}
             onClick={() => navigate('/templates', { state: { selectedCaseId: caseData.id } })}
             title="إنشاء مذكرة أو مستند جديد لهذه القضية"
           >
@@ -146,16 +196,23 @@ export default function CaseHeader({
           <button
             type="button"
             className="btn-secondary"
-            style={{ fontSize: '12px', padding: '8px 14px', background: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              fontSize: '12px', padding: '8px 14px',
+              background: '#1e293b', color: 'white',
+              border: '1px solid #334155', borderRadius: '6px',
+              display: 'flex', alignItems: 'center', gap: '6px',
+            }}
             onClick={() => window.dispatchEvent(new CustomEvent('open-case-panel', { detail: { id: caseData.id } }))}
           >
             ✏️ تعديل الدعوى
           </button>
         </div>
+
+        {/* مربع الملف المهم */}
         <div
           onClick={() => {
-            if (onPickCritical) { onPickCritical(); return; }
-            if (mainProcedureUrl) window.open(mainProcedureUrl, '_blank');
+            if (onPickCritical) onPickCritical();
+            else if (mainProcedureUrl) window.open(mainProcedureUrl, '_blank');
           }}
           style={{
             width: '84px',
@@ -168,16 +225,28 @@ export default function CaseHeader({
             fontSize: '28px',
             flexShrink: 0,
             overflow: 'hidden',
-            cursor: 'pointer',
+            cursor: (onPickCritical || mainProcedureUrl) ? 'pointer' : 'default',
           }}
-          title={mainProcedureUrl ? 'انقر لتغيير الملف المهم' : 'انقر لتعيين الملف المهم'}
+          title={onPickCritical
+            ? (mainProcedureUrl ? 'تغيير الملف المهم' : 'تعيين الملف المهم')
+            : (mainProcedureUrl ? 'فتح الملف/الإجراء المهم' : 'لم يتم تعيين ملف مهم')}
         >
           {mainProcedureUrl ? (
-            <img src={mainProcedureUrl} alt="أهم إجراء" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+            isImageUrl(mainProcedureUrl) ? (
+              <img
+                src={mainProcedureUrl}
+                alt="أهم إجراء"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                loading="lazy"
+              />
+            ) : (
+              <span style={{ fontSize: 32 }}>📄</span>
+            )
           ) : (
-            '📜'
+            <span style={{ fontSize: 28 }}>📜</span>
           )}
         </div>
+
       </div>
     </div>
   );

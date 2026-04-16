@@ -95,14 +95,21 @@ export default function CaseDetails() {
   } = useCaseDetails();
 
   const handleSetCover = async (url) => {
-    if (url === undefined) return;
-    await storage.updateCase(workspaceId, caseData.id, { coverImage: url });
+    await storage.updateCase(workspaceId, caseData.id, { coverImage: url || null });
+    await refreshCaseData();
   };
 
   const handleSetCritical = async (url) => {
-    if (url === undefined) return;
-    await storage.updateCase(workspaceId, caseData.id, { criticalHighlightUrl: url });
+    await storage.updateCase(workspaceId, caseData.id, { criticalHighlightUrl: url || null });
+    await refreshCaseData();
   };
+
+  const toBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 
   const pillStyle = getCaseNumberPillStyle(caseData);
   const sortedSessions = [...(caseData?.sessionsHistory || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -704,14 +711,32 @@ export default function CaseDetails() {
               <div style={{ marginBottom: 16, padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>الحالي:</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-                  <a
-                    href={pickerMode === 'cover' ? caseData.coverImage : caseData.criticalHighlightUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: 12, color: 'var(--primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  <button
+                    onClick={() => {
+                      const url = pickerMode === 'cover'
+                        ? caseData.coverImage
+                        : caseData.criticalHighlightUrl;
+                      if (!url) return;
+                      if (url.startsWith('data:')) {
+                        const mimeType = url.split(',')[0].split(':')[1].split(';')[0];
+                        const byteString = atob(url.split(',')[1]);
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                        const blob = new Blob([ab], { type: mimeType });
+                        window.open(URL.createObjectURL(blob), '_blank');
+                      } else {
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    style={{
+                      fontSize: 12, color: 'var(--primary)', flex: 1,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      textAlign: 'right', fontFamily: 'Cairo', padding: 0,
+                    }}
                   >
                     🔗 فتح الحالي
-                  </a>
+                  </button>
                   <button
                     onClick={async () => {
                       if (pickerMode === 'cover') await handleSetCover(null);
@@ -753,11 +778,39 @@ export default function CaseDetails() {
                             alert('تعذّر فتح الملف المحلي');
                             return;
                           }
-                          url = result.url;
+                          // Convert blob to base64 for permanent storage
+                          try {
+                            const resp = await fetch(result.url);
+                            const blob = await resp.blob();
+                            url = await toBase64(blob);
+                          } catch {
+                            alert('تعذّر تحويل الملف');
+                            return;
+                          }
                         }
                         if (!url) return;
-                        if (pickerMode === 'cover') await handleSetCover(url);
-                        if (pickerMode === 'critical') await handleSetCritical(url);
+                        if (pickerMode === 'cover') {
+                          await handleSetCover(url);
+                        } else if (pickerMode === 'critical') {
+                          await handleSetCritical(url);
+                          const isImage = url.startsWith('data:image') ||
+                            /\.(png|jpe?g|gif|webp)($|\?)/i.test(url);
+                          if (!isImage) {
+                            // For base64 PDFs/docs - open via blob
+                            if (url.startsWith('data:')) {
+                              const byteString = atob(url.split(',')[1]);
+                              const mimeType = url.split(',')[0].split(':')[1].split(';')[0];
+                              const ab = new ArrayBuffer(byteString.length);
+                              const ia = new Uint8Array(ab);
+                              for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                              const blob = new Blob([ab], { type: mimeType });
+                              const blobUrl = URL.createObjectURL(blob);
+                              window.open(blobUrl, '_blank');
+                            } else {
+                              window.open(url, '_blank');
+                            }
+                          }
+                        }
                         setPickerMode(null);
                       }}
                       style={{
@@ -765,7 +818,6 @@ export default function CaseDetails() {
                         padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
                         border: isSelected ? '2px solid #f59e0b' : '1px solid #e2e8f0',
                         background: isSelected ? '#fffbeb' : isLocal ? '#f8fafc' : 'white',
-                        opacity: isLocal ? 0.6 : 1,
                       }}
                     >
                       <span style={{ fontSize: 20 }}>
@@ -778,7 +830,7 @@ export default function CaseDetails() {
                         </div>
                         {isLocal && (
                           <div style={{ fontSize: 10, color: '#94a3b8' }}>
-                            محلي — يحتاج رابط للتعيين
+                            💾 محلي — انقر للتعيين مباشرة
                           </div>
                         )}
                       </div>

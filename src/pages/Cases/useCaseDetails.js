@@ -191,25 +191,20 @@ export default function useCaseDetails() {
     if (!workspaceId || !caseId) return;
 
     try {
-      setLoading(true);
-      const caseRecord = await getCase(workspaceId, caseId);
-      if (caseRecord) {
-        setCaseData(caseRecord);
-
-        const [tasksData, judgementsData] = await Promise.all([
-          storage.listTasks ? storage.listTasks(workspaceId, { caseId, limit: 100 }) : Promise.resolve([]),
-          storage.listJudgments ? storage.listJudgments(workspaceId, { limit: 100 }) : Promise.resolve([]),
-        ]).catch(() => [[], []]);
-
-        setTasks(Array.isArray(tasksData) ? tasksData : []);
-        setJudgments(Array.isArray(judgementsData) ? judgementsData.filter((judgment) => judgment.caseId === caseId) : []);
+      const { db } = await import('@/config/firebase.js');
+      const doc = await db
+        .collection('workspaces')
+        .doc(workspaceId)
+        .collection('cases')
+        .doc(caseId)
+        .get();
+      if (doc.exists) {
+        setCaseData({ id: doc.id, ...doc.data() });
       }
-    } catch (error) {
-      console.error('Error refreshing case:', error);
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('refreshCaseData error:', err);
     }
-  }, [workspaceId, caseId, getCase]);
+  }, [workspaceId, caseId]);
 
   const saveBlocks = useCallback(async () => {
     if (!workspaceId || !caseId) return;
