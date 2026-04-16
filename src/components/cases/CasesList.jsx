@@ -157,6 +157,7 @@ export default function CasesList() {
   const activeFilter = String(filters?.active || 'pleading');
   const [selectedCases, setSelectedCases] = useState(new Set());
   const [isBulkRolling, setIsBulkRolling] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const initializedDefaultFilter = useRef(false);
 
   useEffect(() => {
@@ -292,6 +293,12 @@ export default function CasesList() {
           <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
             إجمالي: {filteredAndSearched.length} قضية
           </span>
+          <button type="button" className={isSelectionMode ? "btn-primary" : "btn-secondary"} style={{ fontSize: 13 }} onClick={() => {
+            if (isSelectionMode) { setIsSelectionMode(false); setSelectedCases(new Set()); }
+            else { setIsSelectionMode(true); }
+          }}>
+            {isSelectionMode ? 'إلغاء وضع التحديد' : '✓ تحديد / ترحيل متعدد'}
+          </button>
           <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setShowImporter(true)}>
             استيراد
           </button>
@@ -321,7 +328,7 @@ export default function CasesList() {
           </div>
 
           {/* شريط الترحيل الجماعي */}
-          {selectedCases.size > 0 && (
+          {isSelectionMode && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10,
               background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)',
@@ -331,18 +338,32 @@ export default function CasesList() {
             }}>
               <span style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#3b82f6', color: 'white', width: '22px', height: '22px',
-                borderRadius: '50%', fontSize: '12px', fontWeight: 800,
+                background: selectedCases.size > 0 ? '#3b82f6' : '#94a3b8', color: 'white', minWidth: '22px', height: '22px',
+                borderRadius: '11px', padding: '0 8px', fontSize: '12px', fontWeight: 800,
               }}>
-                {selectedCases.size}
+                {selectedCases.size} محدد
               </span>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>ترحيل إلى:</span>
-              <button onClick={() => handleBulkRollover('pleading')} disabled={isBulkRolling} style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>تداول</button>
-              <button onClick={() => handleBulkRollover('judgment')} disabled={isBulkRolling} style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>حجز للحكم</button>
-              <button onClick={() => handleBulkRollover('chamber')} disabled={isBulkRolling} style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>الشعبة</button>
-              <button onClick={() => handleBulkRollover('referred')} disabled={isBulkRolling} style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>إحالة</button>
+              
+              <button 
+                onClick={() => {
+                  if (selectedCases.size === filteredAndSearched.length) {
+                    setSelectedCases(new Set());
+                  } else {
+                    setSelectedCases(new Set(filteredAndSearched.map(c => c.id)));
+                  }
+                }}
+                style={{ background: 'transparent', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 700 }}
+              >
+                {selectedCases.size === filteredAndSearched.length && filteredAndSearched.length > 0 ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
+              </button>
+
               <div style={{ width: '1px', height: '16px', background: '#e2e8f0', margin: '0 4px' }} />
-              <button onClick={() => setSelectedCases(new Set())} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: 800 }}>✕ إلغاء</button>
+
+              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>ترحيل إلى:</span>
+              <button onClick={() => handleBulkRollover('pleading')} disabled={isBulkRolling || selectedCases.size === 0} style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: selectedCases.size === 0 ? 0.5 : 1 }}>تداول</button>
+              <button onClick={() => handleBulkRollover('judgment')} disabled={isBulkRolling || selectedCases.size === 0} style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: selectedCases.size === 0 ? 0.5 : 1 }}>حجز للحكم</button>
+              <button onClick={() => handleBulkRollover('chamber')} disabled={isBulkRolling || selectedCases.size === 0} style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: selectedCases.size === 0 ? 0.5 : 1 }}>الشعبة</button>
+              <button onClick={() => handleBulkRollover('referred')} disabled={isBulkRolling || selectedCases.size === 0} style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', opacity: selectedCases.size === 0 ? 0.5 : 1 }}>إحالة</button>
             </div>
           )}
         </div>
@@ -390,15 +411,30 @@ export default function CasesList() {
                   key={caseItem.id}
                   className={`case-card-v2 ${hasFlags ? 'flagged' : ''} ${isDormant ? 'dormant' : ''}`}
                   style={{
-                    position: 'relative', transition: 'all 0.2s ease',
+                    position: 'relative', transition: 'all 0.2s ease', cursor: isSelectionMode ? 'pointer' : 'default',
                     ...(isSelected
-                      ? { border: '2px solid #f59e0b', backgroundColor: '#fffbeb', transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(245,158,11,0.15)' }
+                      ? { border: '2px solid #3b82f6', backgroundColor: '#eff6ff', transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(59,130,246,0.15)' }
                       : isMissingFile ? { border: '2px solid #fca5a5', backgroundColor: '#fef2f2' }
                       : isVipPlaintiff ? { borderRight: '4px solid #16a34a' }
                       : isNoInterest ? { opacity: 0.65, filter: 'grayscale(0.3)' } : {}),
                   }}
-                  onClick={() => handleCaseClick(caseItem.id)}
+                  onClick={() => {
+                    if (isSelectionMode) toggleCaseSelection(caseItem.id);
+                    else handleCaseClick(caseItem.id);
+                  }}
                 >
+                  {isSelectionMode && (
+                    <div style={{
+                      position: 'absolute', top: 12, left: 12, zIndex: 10,
+                      width: 22, height: 22, borderRadius: '4px',
+                      background: isSelected ? '#3b82f6' : '#fff',
+                      border: isSelected ? 'none' : '2px solid #cbd5e1',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontSize: 13, fontWeight: 'bold'
+                    }}>
+                      {isSelected && '✓'}
+                    </div>
+                  )}
                   {/* ── Identity Row ── */}
                   <div className="case-card-row case-card-row--identity" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <CaseNumberBadge
