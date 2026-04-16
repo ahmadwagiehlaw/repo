@@ -14,6 +14,7 @@ import {
   LAWBASE_EVENTS,
 } from '@/core/Constants.js';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { setDisplaySettings } from '@/utils/caseUtils.js';
 import { confirmDialog, promptDialog } from '@/utils/browserFeedback.js';
 import cloudSyncService from '@/services/CloudSyncService.js';
@@ -679,6 +680,8 @@ export default function Settings() {
     canManageWorkspaceSettings,
   } = useWorkspace();
 
+  const { user: currentUser } = useAuth();
+
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState({});
   const [saving, setSaving] = useState(false);
@@ -1082,89 +1085,125 @@ export default function Settings() {
         </div>
       ) : null}
 
+      {/* ── كارت بيانات الحساب ── */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>🏢 مساحة العمل</h3>
-          <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
-            {saving ? '...' : '💾 حفظ سريع'}
-          </button>
-        </div>
-        <div className="form-group">
-          <label className="form-label">اسم مساحة العمل (إعداد عرض حاليًا)</label>
-          <input
-            className="form-input"
-            value={settings.workspaceName || currentWorkspace?.name || ''}
-            onChange={(e) => setSettings((s) => ({ ...s, workspaceName: e.target.value }))}
-            disabled={!canManageWorkspaceSettings}
-          />
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-            هذا الحقل يخص اسم العرض داخل الإعدادات حاليًا، وليس إعادة تسمية مباشرة لمساحة العمل.
-          </div>
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">نوع مساحة العمل</label>
-          <select
-            className="form-input"
-            value={settings.workspaceType || ''}
-            onChange={(e) => setSettings((s) => ({ ...s, workspaceType: e.target.value }))}
-            disabled={!canManageWorkspaceSettings}
-          >
-            <option value="">اختر النوع</option>
-            <option value="law_firm">مكتب محاماة</option>
-            <option value="judicial_circuit">دائرة قضائية</option>
-            <option value="government_entity">جهة حكومية</option>
-            <option value="legal_team">فريق قانوني</option>
-          </select>
+          <h3 style={{ margin: 0, fontSize: 15 }}>👤 بيانات الحساب</h3>
+          <span style={{
+            fontSize: 11, padding: '3px 10px',
+            borderRadius: 12, background: 'var(--primary-light)',
+            color: 'var(--primary)', fontWeight: 700,
+          }}>
+            {currentWorkspace?.name || '—'}
+          </span>
         </div>
 
-        {/* Brand customization */}
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700,
-            color: 'var(--text-primary)', marginBottom: 12 }}>
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">الاسم الظاهر</label>
+            <input
+              className="form-input"
+              value={settings.ownerDisplayName ?? currentUser?.displayName ?? ''}
+              onChange={(e) => setSettings((s) => ({ ...s, ownerDisplayName: e.target.value }))}
+              placeholder="مثال: المستشار / أحمد وجيه"
+              disabled={!canManageWorkspaceSettings}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">رقم التليفون (للتواصل)</label>
+            <input
+              className="form-input"
+              value={settings.ownerPhone ?? ''}
+              onChange={(e) => setSettings((s) => ({ ...s, ownerPhone: e.target.value }))}
+              placeholder="مثال: 0100 000 0000"
+              dir="ltr"
+              style={{ direction: 'ltr', textAlign: 'right' }}
+              disabled={!canManageWorkspaceSettings}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+              يظهر للـ Super Admin عند التواصل بشأن الاشتراك.
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 12px', background: 'var(--bg-page)',
+            borderRadius: 'var(--radius-sm)',
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>البريد الإلكتروني:</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', direction: 'ltr' }}>
+              {currentUser?.email || '—'}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 10 }}>
             🎨 تخصيص هوية التطبيق
           </div>
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 10 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600,
-                color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                 اسم التطبيق (يظهر في الشريط الجانبي)
               </label>
               <input
                 type="text"
                 value={brandName ?? 'LawBase'}
-                onChange={(e) => {
-                  setBrandName(e.target.value);
-                  setSettings((s) => ({ ...s, brandName: e.target.value }));
-                }}
+                onChange={(e) => { setBrandName(e.target.value); setSettings((s) => ({ ...s, brandName: e.target.value })); }}
                 placeholder="LawBase"
                 maxLength={30}
                 disabled={!canManageWorkspaceSettings}
-                style={{ width: '100%', padding: '8px 12px',
-                  border: '1px solid var(--border)', borderRadius: 8,
-                  fontFamily: 'Cairo', fontSize: 13 }}
+                className="form-input"
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600,
-                color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                 النص الفرعي (يظهر تحت الاسم)
               </label>
               <input
                 type="text"
                 value={brandSub ?? 'نظام إدارة القضايا'}
-                onChange={(e) => {
-                  setBrandSub(e.target.value);
-                  setSettings((s) => ({ ...s, brandSub: e.target.value }));
-                }}
+                onChange={(e) => { setBrandSub(e.target.value); setSettings((s) => ({ ...s, brandSub: e.target.value })); }}
                 placeholder="نظام إدارة القضايا"
                 maxLength={40}
                 disabled={!canManageWorkspaceSettings}
-                style={{ width: '100%', padding: '8px 12px',
-                  border: '1px solid var(--border)', borderRadius: 8,
-                  fontFamily: 'Cairo', fontSize: 13 }}
+                className="form-input"
               />
             </div>
           </div>
+        </div>
+
+        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn-secondary" onClick={saveSettings}
+            disabled={saving || !canManageWorkspaceSettings}
+            style={{ padding: '6px 10px', fontSize: 12 }}>
+            {saving ? '...' : '💾 حفظ سريع'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── كارت نوع المساحة ── */}
+      <div className="card">
+        <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>🏢 نوع مساحة العمل</h3>
+        <select
+          className="form-input"
+          value={settings.workspaceType || ''}
+          onChange={(e) => setSettings((s) => ({ ...s, workspaceType: e.target.value }))}
+          disabled={!canManageWorkspaceSettings}
+        >
+          <option value="">اختر النوع</option>
+          <option value="law_firm">مكتب محاماة</option>
+          <option value="judicial_circuit">دائرة قضائية</option>
+          <option value="government_entity">جهة حكومية</option>
+          <option value="legal_team">فريق قانوني</option>
+        </select>
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="btn-secondary" onClick={saveSettings}
+            disabled={saving || !canManageWorkspaceSettings}
+            style={{ padding: '6px 10px', fontSize: 12 }}>
+            {saving ? '...' : '💾 حفظ سريع'}
+          </button>
         </div>
       </div>
 
