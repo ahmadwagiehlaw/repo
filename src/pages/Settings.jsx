@@ -18,14 +18,18 @@ import { setDisplaySettings } from '@/utils/caseUtils.js';
 import { confirmDialog, promptDialog } from '@/utils/browserFeedback.js';
 
 const SETTINGS_TABS = [
-  { id: 'general', label: '⚙️ عام', desc: 'إعدادات مساحة العمل' },
-  { id: 'options', label: '📋 الخيارات', desc: 'قوائم الاختيار' },
-  { id: 'appearance', label: '🎨 المظهر', desc: 'التخصيص البصري' },
-  { id: 'members', label: '👥 الأعضاء', desc: 'إدارة الفريق' },
-  { id: 'import', label: '📥 الاستيراد والتصدير', desc: 'استيراد وتصدير البيانات' },
-  { id: 'audit', label: '🔍 سجل التدقيق', desc: 'سجل العمليات' },
-  { id: 'subscription', label: '⭐ اشتراكي', desc: 'خطتك والاستخدام الحالي' },
-  { id: 'admin', label: '👑 الأدمن', desc: 'إدارة الاشتراكات' },
+  { id: 'general', label: '⚙️ عام', desc: 'اسم المساحة والهوية', group: 1 },
+  { id: 'cases', label: '⚖️ القضايا', desc: 'إعدادات القضايا والمحاكم', group: 1 },
+  { id: 'display', label: '📐 التنسيق', desc: 'تنسيق التواريخ والأرقام', group: 1 },
+  { id: 'automation', label: '🤖 الأتمتة', desc: 'القواعد والتذكيرات التلقائية', group: 2 },
+  { id: 'options', label: '📋 الخيارات', desc: 'قوائم الاختيار', group: 2 },
+  { id: 'appearance', label: '🎨 المظهر', desc: 'الألوان والعرض', group: 2 },
+  { id: 'sync', label: '☁️ المزامنة', desc: 'إعدادات المزامنة السحابية', group: 2 },
+  { id: 'import', label: '📥 البيانات', desc: 'استيراد وتصدير البيانات', group: 3 },
+  { id: 'members', label: '👥 الأعضاء', desc: 'إدارة الفريق', group: 3 },
+  { id: 'subscription', label: '⭐ اشتراكي', desc: 'خطتك والاستخدام الحالي', group: 3 },
+  { id: 'audit', label: '🔍 التدقيق', desc: 'سجل العمليات', group: 3 },
+  { id: 'admin', label: '👑 الأدمن', desc: 'إدارة الاشتراكات', group: 3 },
 ].filter((tab) => tab.id !== 'admin');
 
 const DISPLAY_FORMAT_OPTIONS = [
@@ -1146,309 +1150,6 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>⚖️ بيانات المحكمة الافتراضية</h3>
-          <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
-            {saving ? '...' : '💾 حفظ سريع'}
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">المحكمة الافتراضية</label>
-            <input
-              className="form-input"
-              value={settings.defaultCourt || ''}
-              onChange={(e) => setSettings((s) => ({ ...s, defaultCourt: e.target.value }))}
-              placeholder="مثال: محكمة القضاء الإداري"
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">الدائرة الافتراضية</label>
-            <input
-              className="form-input"
-              value={settings.defaultCircuit || ''}
-              onChange={(e) => setSettings((s) => ({ ...s, defaultCircuit: e.target.value }))}
-              placeholder="مثال: الدائرة الثالثة"
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">المستشار الافتراضي</label>
-            <input
-              className="form-input"
-              value={settings.defaultJudge || ''}
-              onChange={(e) => setSettings((s) => ({ ...s, defaultJudge: e.target.value }))}
-              placeholder="مثال: المستشار / محمد أحمد"
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">نوع الدعوى الافتراضي</label>
-            <select
-              className="form-input"
-              value={settings.defaultProcedureTrack || ''}
-              onChange={(e) => setSettings((s) => ({ ...s, defaultProcedureTrack: e.target.value }))}
-              disabled={!canManageWorkspaceSettings}
-            >
-              {WORKSPACE_DEFAULT_PROCEDURE_TRACK_OPTIONS.map((option) => (
-                <option key={option.value || '__empty__'} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.7 }}>
-              لو اخترت نوعًا واحدًا، حقل نوع الدعوى هيختفي من نموذج القضية تلقائيًا ويتملى وحده.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>🧩 حقول مخصصة</h3>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
-              {customFieldDefs.length}/{MAX_CUSTOM_FIELDS}
-            </span>
-            <button
-              className="btn-secondary"
-              onClick={saveSettings}
-              disabled={saving || !canManageWorkspaceSettings}
-              style={{ padding: '6px 10px', fontSize: 12 }}
-            >
-              {saving ? '...' : '💾 حفظ سريع'}
-            </button>
-            {customFieldsDirty && (
-              <span style={{ fontSize: 12, color: '#dc2626', marginRight: 4, whiteSpace: 'nowrap' }}>
-                لم يتم حفظ التغييرات بعد
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
-          حقول إضافية تظهر في تفاصيل القضية والنماذج.
-          لا تظهر في الكارت الرئيسي.
-        </div>
-
-        {customFieldDefs.map((field, index) => (
-          <div
-            key={field.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 120px 1fr auto',
-              gap: 8,
-              marginBottom: 8,
-              alignItems: 'start',
-            }}
-          >
-            <input
-              className="form-input"
-              placeholder="اسم الحقل"
-              value={field.label}
-              disabled={!canManageWorkspaceSettings}
-              onChange={(e) => updateCustomField(index, { label: e.target.value })}
-            />
-
-            <select
-              className="form-input"
-              value={field.type}
-              disabled={!canManageWorkspaceSettings}
-              onChange={(e) => updateCustomField(index, { type: e.target.value })}
-            >
-              <option value={CUSTOM_FIELD_TYPES.STRING}>نص</option>
-              <option value={CUSTOM_FIELD_TYPES.DATE}>تاريخ</option>
-              <option value={CUSTOM_FIELD_TYPES.NUMBER}>رقم</option>
-              <option value={CUSTOM_FIELD_TYPES.BOOLEAN}>نعم/لا</option>
-              <option value={CUSTOM_FIELD_TYPES.DROPDOWN}>قائمة</option>
-            </select>
-
-            {field.type === CUSTOM_FIELD_TYPES.DROPDOWN ? (
-              <input
-                className="form-input"
-                placeholder="الخيارات مفصولة بفاصلة: خيار1, خيار2"
-                value={Array.isArray(field.options) ? field.options.join(', ') : ''}
-                disabled={!canManageWorkspaceSettings}
-                onChange={(e) =>
-                  updateCustomField(index, {
-                    options: e.target.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-            ) : (
-              <div />
-            )}
-
-            <button
-              onClick={() => removeCustomField(index)}
-              disabled={!canManageWorkspaceSettings}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--danger)',
-                fontSize: 16,
-                padding: '4px 8px',
-              }}
-              title="حذف الحقل"
-            >
-              🗑️
-            </button>
-          </div>
-        ))}
-
-        {customFieldDefs.length < MAX_CUSTOM_FIELDS && canManageWorkspaceSettings && (
-          <button
-            className="btn-secondary"
-            onClick={addCustomField}
-            style={{ marginTop: 8, fontSize: 13 }}
-          >
-            + إضافة حقل مخصص
-          </button>
-        )}
-      </div>
-
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>⏱️ مواعيد الطعن</h3>
-          <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
-            {saving ? '...' : '💾 حفظ سريع'}
-          </button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">ميعاد الطعن الافتراضي (يوم)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={settings.appealDeadlineDefault ?? 40}
-              onChange={(e) => setSettings((s) => ({ ...s, appealDeadlineDefault: Number(e.target.value || 40) }))}
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">المحكمة الإدارية العليا (يوم)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={settings.appealDeadlineSupremeAdmin ?? 60}
-              onChange={(e) => setSettings((s) => ({ ...s, appealDeadlineSupremeAdmin: Number(e.target.value || 60) }))}
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">الوقف الجزائي (يوم)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={settings.appealDeadlineSuspension ?? 45}
-              onChange={(e) => setSettings((s) => ({ ...s, appealDeadlineSuspension: Number(e.target.value || 45) }))}
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">تنبيه الوقف الجزائي قبل (يوم)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={settings.suspensionWarningDays ?? 30}
-              onChange={(e) => setSettings((s) => ({ ...s, suspensionWarningDays: Number(e.target.value || 30) }))}
-              disabled={!canManageWorkspaceSettings}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>🧭 العرض والتنسيق</h3>
-          <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
-            {saving ? '...' : '💾 حفظ سريع'}
-          </button>
-        </div>
-        <Toggle
-          label="عرض الأرقام بالعربية (١٢٣)"
-          value={settings.useArabicNumerals ?? settings.arabicNumerals ?? false}
-          onChange={(v) => setSettings((s) => normalizeDisplaySettings({ ...s, useArabicNumerals: v, arabicNumerals: v }))}
-          disabled={!canManageWorkspaceSettings}
-        />
-
-        <div className="form-group" style={{ margin: '12px 0 0' }}>
-          <label className="form-label">طريقة عرض رقم الدعوى</label>
-          <select
-            className="form-input"
-            value={settings.caseNumberDisplayFormat || 'year-slash-number'}
-            onChange={(e) => setSettings((s) => normalizeDisplaySettings({ ...s, caseNumberDisplayFormat: e.target.value }))}
-            disabled={!canManageWorkspaceSettings}
-          >
-            <option value="year-slash-number">year-slash-number (72/802)</option>
-            <option value="number-sanah-year">number-sanah-year (802 لسنة 72)</option>
-          </select>
-        </div>
-
-        <div className="form-group" style={{ margin: '12px 0 0' }}>
-          <label className="form-label">تنسيق التاريخ</label>
-          <select
-            className="form-input"
-            value={settings.dateDisplayFormat || settings.dateFormat || 'DD/MM/YYYY'}
-            onChange={(e) => setSettings((s) => normalizeDisplaySettings({ ...s, dateDisplayFormat: e.target.value, dateFormat: e.target.value }))}
-            dir="ltr"
-            style={{ direction: 'ltr', textAlign: 'left' }}
-            disabled={!canManageWorkspaceSettings}
-          >
-            {DISPLAY_FORMAT_OPTIONS.map((format) => (
-              <option key={format} value={format}>
-                {getDateFormatOptionLabel(format)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">تعريف العاجل (أيام)</label>
-          <input
-            type="number"
-            className="form-input"
-            value={settings.urgentDays ?? 10}
-            onChange={(e) => setSettings((s) => ({ ...s, urgentDays: Number(e.target.value || 10) }))}
-            disabled={!canManageWorkspaceSettings}
-          />
-        </div>
-      </div>
-
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>🤖 القواعد التلقائية</h3>
-          <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
-            {saving ? '...' : '💾 حفظ سريع'}
-          </button>
-        </div>
-        <Toggle
-          label="تفعيل القواعد التلقائية"
-          value={settings.autoRulesEnabled ?? true}
-          onChange={(v) => setSettings((s) => ({ ...s, autoRulesEnabled: v }))}
-          disabled={!canManageWorkspaceSettings}
-        />
-        <Toggle
-          label="إنشاء مهمة ميعاد الطعن تلقائياً"
-          value={settings.autoCreateAppealTask ?? true}
-          onChange={(v) => setSettings((s) => ({ ...s, autoCreateAppealTask: v }))}
-          disabled={!canManageWorkspaceSettings}
-        />
-        <Toggle
-          label="تمييز القضايا العاجلة تلقائياً"
-          value={settings.autoMarkUrgent ?? true}
-          onChange={(v) => setSettings((s) => ({ ...s, autoMarkUrgent: v }))}
-          disabled={!canManageWorkspaceSettings}
-        />
-      </div>
-
       <div
         className="card"
         style={{
@@ -1500,319 +1201,80 @@ export default function Settings() {
         <h1 className="page-title">الإعدادات</h1>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {SETTINGS_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={activeTab === tab.id ? 'btn-primary' : 'btn-secondary'}
-              title={tab.desc}
-              style={{ fontSize: 13, padding: '7px 12px' }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div style={{
+        background: 'white',
+        border: '1px solid var(--border-light)',
+        borderRadius: 12,
+        padding: '10px 14px',
+        marginBottom: 4,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}>
+        {[
+          { num: 1, label: 'مساحة العمل' },
+          { num: 2, label: 'الأتمتة والمظهر' },
+          { num: 3, label: 'الإدارة' },
+        ].map(({ num, label }) => {
+          const groupTabs = SETTINGS_TABS.filter((tab) => tab.group === num);
+          return (
+            <div key={num} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              paddingBottom: num < 3 ? 6 : 0,
+              borderBottom: num < 3 ? '1px solid var(--border-light)' : 'none',
+              flexWrap: 'wrap',
+            }}>
+              <span style={{
+                fontSize: 10,
+                color: 'var(--text-muted)',
+                fontWeight: 600,
+                minWidth: 72,
+                whiteSpace: 'nowrap',
+                paddingLeft: 4,
+                borderLeft: '2px solid var(--border)',
+              }}>
+                {label}
+              </span>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: 1 }}>
+                {groupTabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      title={tab.desc}
+                      style={{
+                        fontSize: 12,
+                        padding: '5px 12px',
+                        borderRadius: 20,
+                        border: '1px solid',
+                        cursor: 'pointer',
+                        fontFamily: 'Cairo, sans-serif',
+                        fontWeight: isActive ? 700 : 500,
+                        transition: 'all 0.15s ease',
+                        borderColor: isActive ? 'var(--primary)' : 'var(--border)',
+                        background: isActive ? 'var(--primary)' : 'transparent',
+                        color: isActive ? 'white' : 'var(--text-secondary)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {activeTab === 'general' && generalCards}
 
-      {activeTab === 'options' && (
+            {activeTab === 'options' && (
         <div style={{ maxWidth: 920 }}>
-          {(() => {
-            const reminderTargetFieldOptions = [
-              ...REMINDER_TARGET_FIELD_OPTIONS,
-              ...getCustomFieldReminderOptions(customFieldDefs),
-              ...(Array.isArray(settings.customReminderTargetFields) ? settings.customReminderTargetFields : []).map((field) => ({
-                value: String(field?.value || field || '').trim(),
-                label: String(field?.label || field?.value || field || '').trim(),
-              })).filter((field) => field.value),
-            ].filter((field, index, list) => (
-              field.value && list.findIndex((item) => item.value === field.value) === index
-            ));
-
-            return (
-          <div className="card" style={{ marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15 }}>🤖 محرك الأتمتة والذكاء الإجرائي</h3>
-                <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-                  إعدادات التصنيف الذكي والتذكيرات الديناميكية للقضايا.
-                </div>
-              </div>
-              <button
-                className="btn-secondary"
-                onClick={saveSettings}
-                disabled={saving || !canManageWorkspaceSettings}
-                style={{ padding: '6px 10px', fontSize: 12 }}
-              >
-                {saving ? '...' : 'حفظ سريع'}
-              </button>
-            </div>
-
-            {!canManageWorkspaceSettings ? (
-              <div style={{ marginBottom: 12, padding: '10px 12px', background: 'var(--bg-page)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: 13 }}>
-                يمكن فقط لمدير مساحة العمل تعديل قواعد الأتمتة المتقدمة.
-              </div>
-            ) : null}
-
-            <div className="form-group">
-              <label className="form-label">كلمات دلالة الصفة (مدعين)</label>
-              <input
-                className="form-input"
-                value={Array.isArray(settings.identityKeywords) ? settings.identityKeywords.join(', ') : ''}
-                onChange={(e) => updateIdentityKeywords(e.target.value)}
-                placeholder="مثال: وزارة، محافظة، شركة"
-                disabled={!canManageWorkspaceSettings}
-              />
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                الكلمات التي إذا وجدت في اسم المدعي تعتبر القضية (مدعين/هام) تلقائياً. اكتب الكلمات مفصولة بفاصلة عربية (،) أو إنجليزية (,)، وليس Enter أو شرطة.
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <h4 style={{ margin: 0, fontSize: 14 }}>قواعد التذكير المخصصة</h4>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={addCustomReminderRule}
-                  disabled={!canManageWorkspaceSettings}
-                  style={{ padding: '6px 10px', fontSize: 12 }}
-                >
-                  + إضافة قاعدة
-                </button>
-              </div>
-
-              {(Array.isArray(settings.customReminderRules) ? settings.customReminderRules : []).length === 0 ? (
-                <div style={{ padding: '12px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: 13 }}>
-                  لا توجد قواعد تذكير ديناميكية بعد.
-                </div>
-              ) : (
-                (Array.isArray(settings.customReminderRules) ? settings.customReminderRules : []).map((rule, index) => (
-                  <div
-                    key={rule.id || index}
-                    style={{
-                      display: 'grid',
-                      gap: 12,
-                      padding: 12,
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius-md)',
-                      background: '#fff',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)' }}>
-                          قاعدة #{index + 1}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                          نفّذ الأفعال عند تحقق كل الشروط.
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeCustomReminderRule(index)}
-                        disabled={!canManageWorkspaceSettings}
-                        style={{
-                          background: '#fff5f5',
-                          border: '1px solid #fecaca',
-                          borderRadius: 999,
-                          cursor: canManageWorkspaceSettings ? 'pointer' : 'not-allowed',
-                          color: '#b91c1c',
-                          fontSize: 12,
-                          fontWeight: 800,
-                          padding: '4px 10px',
-                        }}
-                        title="حذف القاعدة"
-                      >
-                        حذف
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 'var(--radius-sm)', background: 'var(--bg-page)' }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-secondary)' }}>الشروط</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">الحقل الأساسي</label>
-                          <select
-                            className="form-input"
-                            value={rule.condition1?.field || rule.targetField || 'plaintiffName'}
-                            onChange={(e) => updateCustomReminderRule(index, {
-                              condition1: { ...(rule.condition1 || {}), field: e.target.value },
-                            })}
-                            disabled={!canManageWorkspaceSettings}
-                          >
-                            {reminderTargetFieldOptions.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label">كلمات الشرط الأساسي</label>
-                          <input
-                            className="form-input"
-                            value={Array.isArray(rule.condition1?.keywords) ? rule.condition1.keywords.join(', ') : (Array.isArray(rule.triggerKeywords) ? rule.triggerKeywords.join(', ') : (rule.triggerKeywords || ''))}
-                            onChange={(e) => updateCustomReminderRule(index, {
-                              condition1: { ...(rule.condition1 || {}), keywords: splitKeywords(e.target.value) },
-                            })}
-                            placeholder="مثال: خبراء, إعلان, تنفيذ"
-                            disabled={!canManageWorkspaceSettings}
-                          />
-                        </div>
-                      </div>
-
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)' }}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(rule.condition2?.enabled)}
-                          onChange={(e) => updateCustomReminderRule(index, {
-                            condition2: { ...(rule.condition2 || {}), enabled: e.target.checked },
-                          })}
-                          disabled={!canManageWorkspaceSettings}
-                        />
-                        و أيضاً: لا تنفذ إلا إذا تحقق شرط ثانٍ
-                      </label>
-
-                      {rule.condition2?.enabled && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">حقل الشرط الثاني</label>
-                            <select
-                              className="form-input"
-                              value={rule.condition2?.field || 'roleCapacity'}
-                              onChange={(e) => updateCustomReminderRule(index, {
-                                condition2: { ...(rule.condition2 || {}), field: e.target.value },
-                              })}
-                              disabled={!canManageWorkspaceSettings}
-                            >
-                              {reminderTargetFieldOptions.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">كلمات الشرط الثاني</label>
-                            <input
-                              className="form-input"
-                              value={Array.isArray(rule.condition2?.keywords) ? rule.condition2.keywords.join(', ') : ''}
-                              onChange={(e) => updateCustomReminderRule(index, {
-                                condition2: { ...(rule.condition2 || {}), keywords: splitKeywords(e.target.value) },
-                              })}
-                              placeholder="مثال: مدعين / طاعنين"
-                              disabled={!canManageWorkspaceSettings}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border)' }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-secondary)' }}>الأفعال</div>
-
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(rule.actions?.createTask ?? rule.reminderMessage)}
-                          onChange={(e) => updateCustomReminderRule(index, {
-                            actions: { ...(rule.actions || {}), createTask: e.target.checked },
-                          })}
-                          disabled={!canManageWorkspaceSettings}
-                        />
-                        إنشاء مهمة
-                      </label>
-                      {(rule.actions?.createTask ?? rule.reminderMessage) && (
-                        <input
-                          className="form-input"
-                          value={rule.actions?.taskMessage ?? rule.reminderMessage ?? ''}
-                          onChange={(e) => updateCustomReminderRule(index, {
-                            actions: { ...(rule.actions || {}), taskMessage: e.target.value },
-                          })}
-                          placeholder="نص المهمة"
-                          disabled={!canManageWorkspaceSettings}
-                        />
-                      )}
-
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(rule.actions?.updateField)}
-                          onChange={(e) => updateCustomReminderRule(index, {
-                            actions: { ...(rule.actions || {}), updateField: e.target.checked },
-                          })}
-                          disabled={!canManageWorkspaceSettings}
-                        />
-                        تحديث حقل
-                      </label>
-                      {rule.actions?.updateField && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
-                          <select
-                            className="form-input"
-                            value={rule.actions?.targetField || 'status'}
-                            onChange={(e) => updateCustomReminderRule(index, {
-                              actions: { ...(rule.actions || {}), targetField: e.target.value },
-                            })}
-                            disabled={!canManageWorkspaceSettings}
-                          >
-                            {reminderTargetFieldOptions.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </select>
-                          <input
-                            className="form-input"
-                            value={rule.actions?.newValue || ''}
-                            onChange={(e) => updateCustomReminderRule(index, {
-                              actions: { ...(rule.actions || {}), newValue: e.target.value },
-                            })}
-                            placeholder="القيمة الجديدة"
-                            disabled={!canManageWorkspaceSettings}
-                          />
-                        </div>
-                      )}
-
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(rule.actions?.doRollover)}
-                          onChange={(e) => updateCustomReminderRule(index, {
-                            actions: { ...(rule.actions || {}), doRollover: e.target.checked },
-                          })}
-                          disabled={!canManageWorkspaceSettings}
-                        />
-                        Route Rollover / ترحيل المسار
-                      </label>
-                      {rule.actions?.doRollover && (
-                        <select
-                          className="form-input"
-                          value={rule.actions?.targetRoute || 'sessions'}
-                          onChange={(e) => updateCustomReminderRule(index, {
-                            actions: { ...(rule.actions || {}), targetRoute: e.target.value },
-                          })}
-                          disabled={!canManageWorkspaceSettings}
-                        >
-                          {CUSTOM_RULE_ROUTE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-            );
-          })()}
-
           {SETTINGS_OPTION_TYPES.map((optType) => (
             <div key={optType.key} className="card" style={{ marginBottom: 8 }}>
               <div
@@ -1891,6 +1353,305 @@ export default function Settings() {
             onChange={(v) => setSettings((s) => ({ ...s, compactMode: v }))}
             disabled={!canManageWorkspaceSettings}
           />
+        </div>
+      )}
+
+            {activeTab === 'cases' && (
+        <div style={{ display: 'grid', gap: 12, maxWidth: 900 }}>
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>⚖️ بيانات المحكمة الافتراضية</h3>
+              <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
+                {saving ? '...' : '💾 حفظ سريع'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">المحكمة الافتراضية</label>
+                <input className="form-input" value={settings.defaultCourt || ''} onChange={(e) => setSettings((s) => ({ ...s, defaultCourt: e.target.value }))} placeholder="مثال: محكمة القضاء الإداري" disabled={!canManageWorkspaceSettings} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">الدائرة الافتراضية</label>
+                <input className="form-input" value={settings.defaultCircuit || ''} onChange={(e) => setSettings((s) => ({ ...s, defaultCircuit: e.target.value }))} placeholder="مثال: الدائرة الثالثة" disabled={!canManageWorkspaceSettings} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">المستشار الافتراضي</label>
+                <input className="form-input" value={settings.defaultJudge || ''} onChange={(e) => setSettings((s) => ({ ...s, defaultJudge: e.target.value }))} placeholder="مثال: المستشار / محمد أحمد" disabled={!canManageWorkspaceSettings} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">نوع الدعوى الافتراضي</label>
+                <select className="form-input" value={settings.defaultProcedureTrack || ''} onChange={(e) => setSettings((s) => ({ ...s, defaultProcedureTrack: e.target.value }))} disabled={!canManageWorkspaceSettings}>
+                  {WORKSPACE_DEFAULT_PROCEDURE_TRACK_OPTIONS.map((option) => (
+                    <option key={option.value || '__empty__'} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.7 }}>
+                  لو اخترت نوعًا واحدًا، حقل نوع الدعوى هيختفي من نموذج القضية تلقائيًا ويتملى وحده.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>⏱️ مواعيد الطعن</h3>
+              <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
+                {saving ? '...' : '💾 حفظ سريع'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">ميعاد الطعن الافتراضي (يوم)</label>
+                <input type="number" className="form-input" value={settings.appealDeadlineDefault ?? 40} onChange={(e) => setSettings((s) => ({ ...s, appealDeadlineDefault: Number(e.target.value || 40) }))} disabled={!canManageWorkspaceSettings} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">المحكمة الإدارية العليا (يوم)</label>
+                <input type="number" className="form-input" value={settings.appealDeadlineSupremeAdmin ?? 60} onChange={(e) => setSettings((s) => ({ ...s, appealDeadlineSupremeAdmin: Number(e.target.value || 60) }))} disabled={!canManageWorkspaceSettings} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">الوقف الجزائي (يوم)</label>
+                <input type="number" className="form-input" value={settings.appealDeadlineSuspension ?? 45} onChange={(e) => setSettings((s) => ({ ...s, appealDeadlineSuspension: Number(e.target.value || 45) }))} disabled={!canManageWorkspaceSettings} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">تنبيه الوقف الجزائي قبل (يوم)</label>
+                <input type="number" className="form-input" value={settings.suspensionWarningDays ?? 30} onChange={(e) => setSettings((s) => ({ ...s, suspensionWarningDays: Number(e.target.value || 30) }))} disabled={!canManageWorkspaceSettings} />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>🧩 حقول مخصصة</h3>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
+                  {customFieldDefs.length}/{MAX_CUSTOM_FIELDS}
+                </span>
+                <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
+                  {saving ? '...' : '💾 حفظ سريع'}
+                </button>
+                {customFieldsDirty && (
+                  <span style={{ fontSize: 12, color: '#dc2626', marginRight: 4, whiteSpace: 'nowrap' }}>لم يتم حفظ التغييرات بعد</span>
+                )}
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+              حقول إضافية تظهر في تفاصيل القضية والنماذج. لا تظهر في الكارت الرئيسي.
+            </div>
+            {customFieldDefs.map((field, index) => (
+              <div key={field.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 1fr auto', gap: 8, marginBottom: 8, alignItems: 'start' }}>
+                <input className="form-input" placeholder="اسم الحقل" value={field.label} disabled={!canManageWorkspaceSettings} onChange={(e) => updateCustomField(index, { label: e.target.value })} />
+                <select className="form-input" value={field.type} disabled={!canManageWorkspaceSettings} onChange={(e) => updateCustomField(index, { type: e.target.value })}>
+                  <option value={CUSTOM_FIELD_TYPES.STRING}>نص</option>
+                  <option value={CUSTOM_FIELD_TYPES.DATE}>تاريخ</option>
+                  <option value={CUSTOM_FIELD_TYPES.NUMBER}>رقم</option>
+                  <option value={CUSTOM_FIELD_TYPES.BOOLEAN}>نعم/لا</option>
+                  <option value={CUSTOM_FIELD_TYPES.DROPDOWN}>قائمة</option>
+                </select>
+                {field.type === CUSTOM_FIELD_TYPES.DROPDOWN ? (
+                  <input className="form-input" placeholder="الخيارات مفصولة بفاصلة: خيار1, خيار2" value={Array.isArray(field.options) ? field.options.join(', ') : ''} disabled={!canManageWorkspaceSettings} onChange={(e) => updateCustomField(index, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
+                ) : (<div />)}
+                <button onClick={() => removeCustomField(index)} disabled={!canManageWorkspaceSettings} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 16, padding: '4px 8px' }} title="حذف الحقل">🗑️</button>
+              </div>
+            ))}
+            {customFieldDefs.length < MAX_CUSTOM_FIELDS && canManageWorkspaceSettings && (
+              <button className="btn-secondary" onClick={addCustomField} style={{ marginTop: 8, fontSize: 13 }}>+ إضافة حقل مخصص</button>
+            )}
+          </div>
+
+          <button className="btn-primary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ width: 'fit-content' }}>
+            {saving ? 'جاري الحفظ...' : '💾 حفظ الإعدادات'}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'display' && (
+        <div style={{ display: 'grid', gap: 12, maxWidth: 900 }}>
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>🧭 العرض والتنسيق</h3>
+              <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
+                {saving ? '...' : '💾 حفظ سريع'}
+              </button>
+            </div>
+            <Toggle label="عرض الأرقام بالعربية (١٢٣)" value={settings.useArabicNumerals ?? settings.arabicNumerals ?? false} onChange={(v) => setSettings((s) => normalizeDisplaySettings({ ...s, useArabicNumerals: v, arabicNumerals: v }))} disabled={!canManageWorkspaceSettings} />
+            <div className="form-group" style={{ margin: '12px 0 0' }}>
+              <label className="form-label">طريقة عرض رقم الدعوى</label>
+              <select className="form-input" value={settings.caseNumberDisplayFormat || 'year-slash-number'} onChange={(e) => setSettings((s) => normalizeDisplaySettings({ ...s, caseNumberDisplayFormat: e.target.value }))} disabled={!canManageWorkspaceSettings}>
+                <option value="year-slash-number">year-slash-number (72/802)</option>
+                <option value="number-sanah-year">number-sanah-year (802 لسنة 72)</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: '12px 0 0' }}>
+              <label className="form-label">تنسيق التاريخ</label>
+              <select className="form-input" value={settings.dateDisplayFormat || settings.dateFormat || 'DD/MM/YYYY'} onChange={(e) => setSettings((s) => normalizeDisplaySettings({ ...s, dateDisplayFormat: e.target.value, dateFormat: e.target.value }))} dir="ltr" style={{ direction: 'ltr', textAlign: 'left' }} disabled={!canManageWorkspaceSettings}>
+                {DISPLAY_FORMAT_OPTIONS.map((format) => (
+                  <option key={format} value={format}>{getDateFormatOptionLabel(format)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">تعريف العاجل (أيام)</label>
+              <input type="number" className="form-input" value={settings.urgentDays ?? 10} onChange={(e) => setSettings((s) => ({ ...s, urgentDays: Number(e.target.value || 10) }))} disabled={!canManageWorkspaceSettings} />
+            </div>
+          </div>
+          <button className="btn-primary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ width: 'fit-content' }}>
+            {saving ? 'جاري الحفظ...' : '💾 حفظ الإعدادات'}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'automation' && (
+        <div style={{ display: 'grid', gap: 12, maxWidth: 900 }}>
+          {/* كارت القواعد التلقائية */}
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}>🤖 القواعد التلقائية</h3>
+              <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
+                {saving ? '...' : '💾 حفظ سريع'}
+              </button>
+            </div>
+            <Toggle label="تفعيل القواعد التلقائية" value={settings.autoRulesEnabled ?? true} onChange={(v) => setSettings((s) => ({ ...s, autoRulesEnabled: v }))} disabled={!canManageWorkspaceSettings} />
+            <Toggle label="إنشاء مهمة ميعاد الطعن تلقائياً" value={settings.autoCreateAppealTask ?? true} onChange={(v) => setSettings((s) => ({ ...s, autoCreateAppealTask: v }))} disabled={!canManageWorkspaceSettings} />
+            <Toggle label="تمييز القضايا العاجلة تلقائياً" value={settings.autoMarkUrgent ?? true} onChange={(v) => setSettings((s) => ({ ...s, autoMarkUrgent: v }))} disabled={!canManageWorkspaceSettings} />
+          </div>
+
+          {/* كارت محرك الأتمتة (المنقول من options tab) */}
+          {(() => {
+            const reminderTargetFieldOptions = [
+              ...REMINDER_TARGET_FIELD_OPTIONS,
+              ...getCustomFieldReminderOptions(customFieldDefs),
+              ...(Array.isArray(settings.customReminderTargetFields) ? settings.customReminderTargetFields : []).map((field) => ({
+                value: String(field?.value || field || '').trim(),
+                label: String(field?.label || field?.value || field || '').trim(),
+              })).filter((field) => field.value),
+            ].filter((field, index, list) => (
+              field.value && list.findIndex((item) => item.value === field.value) === index
+            ));
+
+            return (
+              <div className="card" style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 15 }}>🧠 التصنيف الذكي والتذكيرات الديناميكية</h3>
+                    <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>كلمات مفتاحية وقواعد تذكير مخصصة للقضايا.</div>
+                  </div>
+                  <button className="btn-secondary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>
+                    {saving ? '...' : 'حفظ سريع'}
+                  </button>
+                </div>
+                {!canManageWorkspaceSettings ? (
+                  <div style={{ marginBottom: 12, padding: '10px 12px', background: 'var(--bg-page)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: 13 }}>
+                    يمكن فقط لمدير مساحة العمل تعديل قواعد الأتمتة المتقدمة.
+                  </div>
+                ) : null}
+                <div className="form-group">
+                  <label className="form-label">كلمات دلالة الصفة (مدعين)</label>
+                  <input className="form-input" value={Array.isArray(settings.identityKeywords) ? settings.identityKeywords.join(', ') : ''} onChange={(e) => updateIdentityKeywords(e.target.value)} placeholder="مثال: وزارة، محافظة، شركة" disabled={!canManageWorkspaceSettings} />
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>الكلمات التي إذا وجدت في اسم المدعي تعتبر القضية (مدعين/هام) تلقائياً.</div>
+                </div>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <h4 style={{ margin: 0, fontSize: 14 }}>قواعد التذكير المخصصة</h4>
+                    <button type="button" className="btn-secondary" onClick={addCustomReminderRule} disabled={!canManageWorkspaceSettings} style={{ padding: '6px 10px', fontSize: 12 }}>+ إضافة قاعدة</button>
+                  </div>
+                  {(Array.isArray(settings.customReminderRules) ? settings.customReminderRules : []).length === 0 ? (
+                    <div style={{ padding: '12px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: 13 }}>لا توجد قواعد تذكير ديناميكية بعد.</div>
+                  ) : (
+                    (Array.isArray(settings.customReminderRules) ? settings.customReminderRules : []).map((rule, index) => (
+                      <div key={rule.id || index} style={{ display: 'grid', gap: 12, padding: 12, border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 900 }}>قاعدة #{index + 1}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>نفّذ الأفعال عند تحقق كل الشروط.</div>
+                          </div>
+                          <button type="button" onClick={() => removeCustomReminderRule(index)} disabled={!canManageWorkspaceSettings} style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 999, cursor: canManageWorkspaceSettings ? 'pointer' : 'not-allowed', color: '#b91c1c', fontSize: 12, fontWeight: 800, padding: '4px 10px' }}>حذف</button>
+                        </div>
+                        <div style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 'var(--radius-sm)', background: 'var(--bg-page)' }}>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-secondary)' }}>الشروط</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label">الحقل الأساسي</label>
+                              <select className="form-input" value={rule.condition1?.field || rule.targetField || 'plaintiffName'} onChange={(e) => updateCustomReminderRule(index, { condition1: { ...(rule.condition1 || {}), field: e.target.value } })} disabled={!canManageWorkspaceSettings}>
+                                {reminderTargetFieldOptions.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
+                              </select>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label">كلمات الشرط الأساسي</label>
+                              <input className="form-input" value={Array.isArray(rule.condition1?.keywords) ? rule.condition1.keywords.join(', ') : (Array.isArray(rule.triggerKeywords) ? rule.triggerKeywords.join(', ') : (rule.triggerKeywords || ''))} onChange={(e) => updateCustomReminderRule(index, { condition1: { ...(rule.condition1 || {}), keywords: splitKeywords(e.target.value) } })} placeholder="مثال: خبراء, إعلان, تنفيذ" disabled={!canManageWorkspaceSettings} />
+                            </div>
+                          </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)' }}>
+                            <input type="checkbox" checked={Boolean(rule.condition2?.enabled)} onChange={(e) => updateCustomReminderRule(index, { condition2: { ...(rule.condition2 || {}), enabled: e.target.checked } })} disabled={!canManageWorkspaceSettings} />
+                            و أيضاً: لا تنفذ إلا إذا تحقق شرط ثانٍ
+                          </label>
+                          {rule.condition2?.enabled && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">حقل الشرط الثاني</label>
+                                <select className="form-input" value={rule.condition2?.field || 'roleCapacity'} onChange={(e) => updateCustomReminderRule(index, { condition2: { ...(rule.condition2 || {}), field: e.target.value } })} disabled={!canManageWorkspaceSettings}>
+                                  {reminderTargetFieldOptions.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
+                                </select>
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">كلمات الشرط الثاني</label>
+                                <input className="form-input" value={Array.isArray(rule.condition2?.keywords) ? rule.condition2.keywords.join(', ') : ''} onChange={(e) => updateCustomReminderRule(index, { condition2: { ...(rule.condition2 || {}), keywords: splitKeywords(e.target.value) } })} placeholder="مثال: مدعين / طاعنين" disabled={!canManageWorkspaceSettings} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border)' }}>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-secondary)' }}>الأفعال</div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
+                            <input type="checkbox" checked={Boolean(rule.actions?.createTask ?? rule.reminderMessage)} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), createTask: e.target.checked } })} disabled={!canManageWorkspaceSettings} />
+                            إنشاء مهمة
+                          </label>
+                          {(rule.actions?.createTask ?? rule.reminderMessage) && (
+                            <input className="form-input" value={rule.actions?.taskMessage ?? rule.reminderMessage ?? ''} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), taskMessage: e.target.value } })} placeholder="نص المهمة" disabled={!canManageWorkspaceSettings} />
+                          )}
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
+                            <input type="checkbox" checked={Boolean(rule.actions?.updateField)} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), updateField: e.target.checked } })} disabled={!canManageWorkspaceSettings} />
+                            تحديث حقل
+                          </label>
+                          {rule.actions?.updateField && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
+                              <select className="form-input" value={rule.actions?.targetField || 'status'} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), targetField: e.target.value } })} disabled={!canManageWorkspaceSettings}>
+                                {reminderTargetFieldOptions.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
+                              </select>
+                              <input className="form-input" value={rule.actions?.newValue || ''} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), newValue: e.target.value } })} placeholder="القيمة الجديدة" disabled={!canManageWorkspaceSettings} />
+                            </div>
+                          )}
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800 }}>
+                            <input type="checkbox" checked={Boolean(rule.actions?.doRollover)} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), doRollover: e.target.checked } })} disabled={!canManageWorkspaceSettings} />
+                            Route Rollover / ترحيل المسار
+                          </label>
+                          {rule.actions?.doRollover && (
+                            <select className="form-input" value={rule.actions?.targetRoute || 'sessions'} onChange={(e) => updateCustomReminderRule(index, { actions: { ...(rule.actions || {}), targetRoute: e.target.value } })} disabled={!canManageWorkspaceSettings}>
+                              {CUSTOM_RULE_ROUTE_OPTIONS.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          <button className="btn-primary" onClick={saveSettings} disabled={saving || !canManageWorkspaceSettings} style={{ width: 'fit-content' }}>
+            {saving ? 'جاري الحفظ...' : '💾 حفظ الإعدادات'}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'sync' && (
+        <div style={{ maxWidth: 920 }}>
+          <div className="card">
+            <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>☁️ إعدادات المزامنة</h3>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+              إعدادات المزامنة السحابية مع Firebase Storage — قريباً.
+            </div>
+          </div>
         </div>
       )}
 
