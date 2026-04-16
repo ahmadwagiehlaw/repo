@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DateDisplay from '@/components/common/DateDisplay.jsx';
 import localFileIndex from '@/services/LocalFileIndex.js';
 import attachmentService from '@/services/AttachmentService.js';
@@ -8,11 +8,15 @@ import FeatureGate from '@/components/ui/FeatureGate.jsx';
 import subscriptionManager from '@/services/SubscriptionManager.js';
 
 const VIEW_MODES = [
-  { id: 'grid', icon: '⊞', label: 'شبكة' },
+  { id: 'grid', icon: '▦', label: 'شبكة' },
   { id: 'list', icon: '☰', label: 'قائمة' },
 ];
 
-function AttachmentThumbnail({ attachment, onOpen, onDelete, isOpening, syncStatus }) {
+function AttachmentThumbnail({ attachment, onOpen, onDelete, onRename, isOpening, syncStatus }) {
+  const [thumbUrl, setThumbUrl] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const skipBlurRenameRef = useRef(false);
   const typeConfig = ATTACHMENT_TYPE_MAP[attachment.attachmentType] || null;
   const isLocal = Boolean(attachment.localId);
   const detectedKind = attachmentService.detectKind(attachment.url || '');
@@ -20,87 +24,233 @@ function AttachmentThumbnail({ attachment, onOpen, onDelete, isOpening, syncStat
 
   if (!icon) {
     if (detectedKind === 'image') {
-      icon = '\u{1F5BC}\uFE0F';
+      icon = '🖼️';
     } else if (detectedKind === 'pdf') {
-      icon = '\u{1F4C4}';
+      icon = '📄';
     } else {
-      icon = '\u{1F4CE}';
+      icon = '📎';
     }
   }
+
   const color = typeConfig?.color || '#94a3b8';
   const bg = typeConfig?.bg || '#f8fafc';
 
+  useEffect(() => {
+    let revoked = false;
+
+    setThumbUrl(null);
+
+    const load = async () => {
+      if (attachment.url && (
+        attachment.url.startsWith('data:image') ||
+        /\.(png|jpe?g|gif|webp)($|\?)/i.test(attachment.url)
+      )) {
+        setThumbUrl(attachment.url);
+        return;
+      }
+
+      if (attachment.localId) {
+        try {
+          const result = await localFileIndex.openFile(attachment.localId);
+          if (result?.url && result.type?.startsWith('image/') && !revoked) {
+            setThumbUrl(result.url);
+          }
+        } catch {
+          // no preview
+        }
+      }
+    };
+
+    load();
+    return () => { revoked = true; };
+  }, [attachment.localId, attachment.url]);
+
+  const commitRename = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== (attachment.title || '')) {
+      onRename(attachment, trimmed);
+    }
+    setEditing(false);
+  };
+
+  const cancelRename = () => {
+    setEditTitle(attachment.title || '');
+    setEditing(false);
+  };
+
   return (
-    <div style={{
-      borderRadius: 12, overflow: 'hidden',
-      border: `1px solid ${color}30`,
-      background: 'white',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-      display: 'flex', flexDirection: 'column',
-      transition: 'all 0.2s',
-      cursor: 'pointer',
-    }}
-      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 20px ${color}30`; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
+    <div
+      style={{
+        borderRadius: 12,
+        overflow: 'hidden',
+        border: `1px solid ${color}30`,
+        background: 'white',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'all 0.2s',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = `0 8px 20px ${color}30`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+      }}
     >
-      {/* Thumbnail area */}
       <div
         onClick={() => onOpen(attachment)}
         style={{
-          height: 100, background: bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          position: 'relative', borderBottom: `2px solid ${color}20`,
+          height: 100,
+          background: bg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          borderBottom: `2px solid ${color}20`,
+          overflow: 'hidden',
         }}
       >
         {isOpening ? (
-          <span style={{ fontSize: 28, animation: 'spin 1s linear infinite' }}>⟳</span>
+          <span style={{ fontSize: 28 }}>⟳</span>
+        ) : thumbUrl ? (
+          <img
+            src={thumbUrl}
+            alt={attachment.title || 'مرفق'}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         ) : (
           <span style={{ fontSize: 40 }}>{typeConfig?.icon || '📎'}</span>
         )}
+
         {isLocal && (
-          <span style={{
-            position: 'absolute', top: 6, left: 6,
-            background: '#3b82f6', color: 'white',
-            fontSize: 9, fontWeight: 700, padding: '2px 6px',
-            borderRadius: 10,
-          }}>💾 محلي</span>
+          <span
+            style={{
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              background: '#3b82f6',
+              color: 'white',
+              fontSize: 9,
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: 10,
+            }}
+          >
+            📾 محلي
+          </span>
         )}
+
         {typeConfig?.autoLog && (
-          <span style={{
-            position: 'absolute', top: 6, right: 6,
-            background: '#10b981', color: 'white',
-            fontSize: 9, padding: '2px 6px', borderRadius: 10,
-          }}>📝</span>
+          <span
+            style={{
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              background: '#10b981',
+              color: 'white',
+              fontSize: 9,
+              padding: '2px 6px',
+              borderRadius: 10,
+            }}
+          >
+            📌
+          </span>
         )}
+
         {syncStatus && (
-          <span style={{
-            position: 'absolute', bottom: 6, right: 6,
-            background: syncStatus.status === 'done' ? '#10b981'
-              : syncStatus.status === 'error' ? '#dc2626'
-              : '#3b82f6',
-            color: 'white', fontSize: 9,
-            padding: '2px 6px', borderRadius: 10,
-          }}>
-            {syncStatus.status === 'done' ? '☁️ مزامن'
-              : syncStatus.status === 'error' ? '⚠️ خطأ'
-              : `☁️ ${syncStatus.pct}%`}
+          <span
+            style={{
+              position: 'absolute',
+              bottom: 6,
+              right: 6,
+              background: syncStatus.status === 'done'
+                ? '#10b981'
+                : syncStatus.status === 'error'
+                  ? '#dc2626'
+                  : '#3b82f6',
+              color: 'white',
+              fontSize: 9,
+              padding: '2px 6px',
+              borderRadius: 10,
+            }}
+          >
+            {syncStatus.status === 'done'
+              ? '✅ متزامن'
+              : syncStatus.status === 'error'
+                ? '⚠️ خطأ'
+                : `🔄 ${syncStatus.pct}%`}
           </span>
         )}
       </div>
 
-      {/* Info */}
       <div style={{ padding: '8px 10px', flex: 1 }}>
-        <div style={{
-          fontSize: 12, fontWeight: 700, color: '#1e293b',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {attachment.title || 'مرفق'}
-        </div>
+        {editing ? (
+          <input
+            autoFocus
+            value={editTitle}
+            onChange={e => setEditTitle(e.target.value)}
+            onBlur={() => {
+              if (skipBlurRenameRef.current) {
+                skipBlurRenameRef.current = false;
+                return;
+              }
+              commitRename();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                skipBlurRenameRef.current = true;
+                commitRename();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                skipBlurRenameRef.current = true;
+                cancelRename();
+              }
+            }}
+            onClick={e => e.stopPropagation()}
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              width: '100%',
+              border: '1px solid var(--primary)',
+              borderRadius: 4,
+              padding: '2px 4px',
+              fontFamily: 'Cairo',
+              outline: 'none',
+            }}
+          />
+        ) : (
+          <div
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditTitle(attachment.title || '');
+              setEditing(true);
+            }}
+            title="انقر مرتين لتعديل الاسم"
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#1e293b',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'text',
+            }}
+          >
+            {attachment.title || 'مرفق'}
+          </div>
+        )}
+
         {typeConfig && (
           <div style={{ fontSize: 10, color, marginTop: 2, fontWeight: 600 }}>
             {typeConfig.icon} {typeConfig.label}
           </div>
         )}
+
         {attachment.sessionDate && (
           <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
             📅 {attachment.sessionDate}
@@ -108,10 +258,12 @@ function AttachmentThumbnail({ attachment, onOpen, onDelete, isOpening, syncStat
         )}
       </div>
 
-      {/* Delete */}
       <div style={{ padding: '4px 8px 8px', display: 'flex', justifyContent: 'flex-end' }}>
         <button
-          onClick={(e) => { e.stopPropagation(); onDelete(attachment); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(attachment);
+          }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#ef4444', padding: '2px 6px' }}
         >
           🗑
@@ -133,6 +285,9 @@ export default function CaseAttachmentsTab({
   const [openingId, setOpeningId] = useState(null);
   const [preview, setPreview] = useState(null);
   const [syncProgress, setSyncProgress] = useState({});
+  const [renamingIdx, setRenamingIdx] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const skipListBlurRenameRef = useRef(false);
 
   const handlePaste = async (e) => {
     const items = e.clipboardData?.items;
@@ -144,7 +299,7 @@ export default function CaseAttachmentsTab({
         if (!file) return;
         const id = `att-paste-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const saved = await localFileIndex.saveFile(id, file);
-        if (!saved) { alert('فشل حفظ الصورة المُلصقة'); return; }
+        if (!saved) { alert('فشل حفظ الصورة الملصقة'); return; }
         const record = attachmentService.buildRecord({
           url: '',
           title: `صورة ملصوقة ${new Date().toLocaleTimeString('ar-EG')}`,
@@ -201,14 +356,37 @@ export default function CaseAttachmentsTab({
     if (idx !== -1) onDeleteAttachment(idx);
   };
 
+  const handleRename = (attachment, newTitle) => {
+    const idx = attachments.indexOf(attachment);
+    if (idx === -1) return;
+    const updated = { ...attachment, title: newTitle };
+    onSaveAttachment(updated);
+  };
+
+  const startListRename = (attachment, idx) => {
+    setRenameValue(attachment.title || '');
+    setRenamingIdx(idx);
+  };
+
+  const commitListRename = (attachment) => {
+    const trimmed = renameValue.trim();
+    if (trimmed) {
+      handleRename(attachment, trimmed);
+    }
+    setRenamingIdx(null);
+  };
+
+  const cancelListRename = () => {
+    setRenamingIdx(null);
+    setRenameValue('');
+  };
+
   return (
     <div
       style={{ direction: 'rtl' }}
       onPaste={handlePaste}
       tabIndex={0}
     >
-
-      {/* ── Toolbar ── */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <button
@@ -221,21 +399,27 @@ export default function CaseAttachmentsTab({
           <FeatureGate feature="cloudSync" />
           <div style={{ display: 'flex', gap: 4 }}>
             {VIEW_MODES.map((m) => (
-              <button key={m.id} onClick={() => setViewMode(m.id)}
+              <button
+                key={m.id}
+                onClick={() => setViewMode(m.id)}
                 title={m.label}
                 style={{
-                  padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 16,
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: 16,
                   border: viewMode === m.id ? '2px solid var(--primary)' : '1px solid var(--border)',
                   background: viewMode === m.id ? 'var(--primary-light)' : 'white',
                   color: viewMode === m.id ? 'var(--primary)' : 'var(--text-secondary)',
                 }}
-              >{m.icon}</button>
+              >
+                {m.icon}
+              </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Smart Upload Modal ── */}
       {showUpload && (
         <SmartAttachmentUpload
           onSave={async (record) => { await onSaveAttachment(record); setShowUpload(false); }}
@@ -243,13 +427,12 @@ export default function CaseAttachmentsTab({
         />
       )}
 
-      {/* ── Inline viewer ── */}
       {preview && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.7)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10000, direction: 'rtl' }}>
             <span style={{ color: 'white', fontSize: 14, fontFamily: 'Cairo', fontWeight: 600 }}>{preview.name}</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => window.open(preview.url, '_blank')} style={{ background: '#3b82f6', border: 'none', borderRadius: 6, color: 'white', padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'Cairo' }}>🔗 فتح خارجي</button>
+              <button onClick={() => window.open(preview.url, '_blank')} style={{ background: '#3b82f6', border: 'none', borderRadius: 6, color: 'white', padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'Cairo' }}>🗗 فتح خارجي</button>
               <button onClick={() => setPreview(null)} style={{ background: '#ef4444', border: 'none', borderRadius: 6, color: 'white', padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'Cairo' }}>✕ إغلاق</button>
             </div>
           </div>
@@ -262,7 +445,6 @@ export default function CaseAttachmentsTab({
         </div>
       )}
 
-      {/* ── Empty state ── */}
       {attachments.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center', border: '2px dashed var(--border)', borderRadius: 12, color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📎</div>
@@ -277,6 +459,7 @@ export default function CaseAttachmentsTab({
               attachment={att}
               onOpen={handleOpen}
               onDelete={handleDelete}
+              onRename={handleRename}
               isOpening={openingId === att.localId}
               syncStatus={att.id ? syncProgress[att.id] : null}
             />
@@ -288,25 +471,84 @@ export default function CaseAttachmentsTab({
             const typeConfig = ATTACHMENT_TYPE_MAP[att.attachmentType] || null;
             const isLocal = Boolean(att.localId);
             const isOpening = openingId === att.localId;
+
             return (
-              <div key={idx} style={{
-                padding: 12, borderRadius: 10, background: typeConfig?.bg || 'var(--bg-hover)',
-                border: `1px solid ${typeConfig?.color || 'var(--border)'}30`,
-                display: 'flex', gap: 12, alignItems: 'center',
-              }}>
+              <div
+                key={idx}
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  background: typeConfig?.bg || 'var(--bg-hover)',
+                  border: `1px solid ${typeConfig?.color || 'var(--border)'}30`,
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'center',
+                }}
+              >
                 <span style={{ fontSize: 24 }}>{typeConfig?.icon || '📎'}</span>
                 <div style={{ flex: 1 }}>
-                  <button onClick={() => handleOpen(att)} disabled={isOpening}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontWeight: 600, fontSize: 14, fontFamily: 'Cairo', padding: 0, display: 'block', textAlign: 'right' }}>
-                    {isOpening ? '⟳ جاري الفتح...' : (att.title || 'مرفق')}
-                  </button>
+                  {renamingIdx === idx ? (
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onBlur={() => {
+                        if (skipListBlurRenameRef.current) {
+                          skipListBlurRenameRef.current = false;
+                          return;
+                        }
+                        commitListRename(att);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          skipListBlurRenameRef.current = true;
+                          commitListRename(att);
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          skipListBlurRenameRef.current = true;
+                          cancelListRename();
+                        }
+                      }}
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        width: '100%',
+                        border: '1px solid var(--primary)',
+                        borderRadius: 4,
+                        padding: '2px 6px',
+                        fontFamily: 'Cairo',
+                        outline: 'none',
+                      }}
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => handleOpen(att)}
+                        disabled={isOpening}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontWeight: 600, fontSize: 14, fontFamily: 'Cairo', padding: 0, textAlign: 'right' }}
+                      >
+                        {isOpening ? '⟳ جاري الفتح...' : (att.title || 'مرفق')}
+                      </button>
+                      <button
+                        onClick={() => startListRename(att, idx)}
+                        title="تعديل الاسم"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#94a3b8', padding: '2px 4px' }}
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', gap: 8 }}>
                     {typeConfig && <span style={{ color: typeConfig.color, fontWeight: 600 }}>{typeConfig.label}</span>}
-                    {isLocal && <span>💾 محلي</span>}
+                    {isLocal && <span>📾 محلي</span>}
                     {att.sessionDate && <span>📅 {att.sessionDate}</span>}
                     {att.addedAt && <DateDisplay value={att.addedAt} options={dateDisplayOptions} />}
                   </div>
                 </div>
+
                 {onSetCover && (att.url || att.localId) && (
                   <button
                     title="تعيين كصورة بارزة للقضية"
@@ -328,8 +570,11 @@ export default function CaseAttachmentsTab({
                       fontFamily: 'Cairo',
                       flexShrink: 0,
                     }}
-                  >🖼 غلاف</button>
+                  >
+                    🖼 غلاف
+                  </button>
                 )}
+
                 <button onClick={() => handleDelete(att)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#ef4444' }}>✕</button>
               </div>
             );
