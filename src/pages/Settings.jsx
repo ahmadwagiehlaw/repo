@@ -1336,32 +1336,69 @@ export default function Settings() {
 
           <div className="form-group">
             <label className="form-label">اللون الرئيسي للتطبيق</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               {[
-                '#FF8C00', '#2563eb', '#7c3aed', '#16a34a',
-                '#dc2626', '#0284c7', '#d97706', '#0f172a',
-              ].map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  disabled={!canManageWorkspaceSettings}
-                  onClick={() => {
-                    if (!canManageWorkspaceSettings) return;
-                    document.documentElement.style.setProperty('--primary', color);
-                    localStorage.setItem('lb_primary_color', color);
-                  }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: color,
-                    border: '3px solid white',
-                    cursor: !canManageWorkspaceSettings ? 'not-allowed' : 'pointer',
-                    opacity: !canManageWorkspaceSettings ? 0.65 : 1,
-                    boxShadow: selectedColor === color ? `0 0 0 2px ${color}` : 'none',
-                  }}
-                />
-              ))}
+                { hex: '#FF8C00', name: 'برتقالي' },
+                { hex: '#2563eb', name: 'أزرق' },
+                { hex: '#7c3aed', name: 'بنفسجي' },
+                { hex: '#16a34a', name: 'أخضر' },
+                { hex: '#dc2626', name: 'أحمر' },
+                { hex: '#0284c7', name: 'سماوي' },
+                { hex: '#ec4899', name: 'بينك' },
+                { hex: '#0f172a', name: 'داكن' },
+              ].map(({ hex, name }) => {
+                const isSelected = selectedColor === hex;
+                return (
+                  <button
+                    key={hex}
+                    type="button"
+                    disabled={!canManageWorkspaceSettings}
+                    onClick={() => {
+                      if (!canManageWorkspaceSettings) return;
+                      document.documentElement.style.setProperty('--primary', hex);
+                      document.documentElement.style.setProperty('--primary-dark', hex);
+                      localStorage.setItem('lb_primary_color', hex);
+                    }}
+                    title={name}
+                    style={{
+                      width: isSelected ? 44 : 36,
+                      height: isSelected ? 44 : 36,
+                      borderRadius: '50%',
+                      background: hex,
+                      border: isSelected ? `3px solid ${hex}` : '3px solid white',
+                      cursor: !canManageWorkspaceSettings ? 'not-allowed' : 'pointer',
+                      opacity: !canManageWorkspaceSettings ? 0.65 : 1,
+                      boxShadow: isSelected
+                        ? `0 0 0 3px ${hex}40, 0 2px 8px ${hex}60`
+                        : '0 1px 4px rgba(0,0,0,0.15)',
+                      transition: 'all 0.2s ease',
+                      transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                      flexShrink: 0,
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+              اللون المحدد: <span style={{
+                display: 'inline-block',
+                width: 12, height: 12,
+                borderRadius: '50%',
+                background: selectedColor || 'var(--primary)',
+                verticalAlign: 'middle',
+                marginLeft: 4,
+                marginRight: 4,
+              }} />
+              {[
+                { hex: '#FF8C00', name: 'برتقالي' },
+                { hex: '#2563eb', name: 'أزرق' },
+                { hex: '#7c3aed', name: 'بنفسجي' },
+                { hex: '#16a34a', name: 'أخضر' },
+                { hex: '#dc2626', name: 'أحمر' },
+                { hex: '#0284c7', name: 'سماوي' },
+                { hex: '#ec4899', name: 'بينك' },
+                { hex: '#0f172a', name: 'داكن' },
+              ].find((c) => c.hex === selectedColor)?.name || 'الافتراضي'}
             </div>
           </div>
 

@@ -3,15 +3,17 @@ import { useLocation } from 'react-router-dom';
 import { useCases } from '@/contexts/CaseContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { FIELD_DENSITY } from '@/core/Constants.js';
+
 import storage from '@/data/Storage.js';
 import { openCasePanel } from '@/utils/openCasePanel.js';
 import { formatCaseNumber } from '@/utils/caseUtils.js';
-import { useFieldDensity } from '@/hooks/useFieldDensity.js';
+
 import { useInstallPrompt } from '@/hooks/useInstallPrompt.js';
 import { useDisplaySettings } from '@/hooks/useDisplaySettings.js';
 import { useSensitiveMode } from '@/hooks/useSensitiveMode.js';
 import { getCaseSessionResult, getCaseTitle, getDerivedCaseSessionType } from '@/utils/caseCanonical.js';
+import cloudSyncService from '@/services/CloudSyncService.js';
+import subscriptionManager from '@/services/SubscriptionManager.js';
 
 function buildNotifications(cases, tasks, judgments, displayOrder, urgentDays = 10) {
   const today = new Date().toISOString().split('T')[0];
@@ -184,7 +186,6 @@ export default function AppHeader({ onMobileDrawerToggle, onToggleSidebar, colla
   const { currentWorkspace } = useWorkspace();
   const displaySettings = useDisplaySettings();
   const location = useLocation();
-  const { density, toggle } = useFieldDensity();
   const { hidden: sensitiveHidden, toggle: toggleSensitiveMode } = useSensitiveMode();
   const { canInstall, install } = useInstallPrompt();
   const [searchQuery, setSearchQuery] = useState('');
@@ -196,10 +197,11 @@ export default function AppHeader({ onMobileDrawerToggle, onToggleSidebar, colla
   const [showBell, setShowBell] = useState(false);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [lastLoaded, setLastLoaded] = useState(null);
+  const [syncState, setSyncState] = useState('idle');
+  // syncState values: 'idle' | 'uploading' | 'error' | 'offline'
   const searchRef = useRef(null);
   const bellRef = useRef(null);
   const workspaceId = String(currentWorkspace?.id || '').trim();
-  const showDensityToggle = location.pathname === '/cases';
 
   useEffect(() => {
     setNotificationControls(readNotificationControls(workspaceId));
@@ -280,6 +282,35 @@ export default function AppHeader({ onMobileDrawerToggle, onToggleSidebar, colla
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Sync progress listener
+  useEffect(() => {
+    if (!subscriptionManager.hasFeature('cloudSync')) return;
+    const unsub = cloudSyncService.onProgress((progress) => {
+      const values = Object.values(progress);
+      if (values.some((p) => p.status === 'error')) {
+        setSyncState('error');
+      } else if (values.some((p) => p.status === 'uploading' || p.status === 'queued')) {
+        setSyncState('uploading');
+      } else {
+        setSyncState('idle');
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Offline/online detection
+  useEffect(() => {
+    const handleOffline = () => setSyncState('offline');
+    const handleOnline = () => setSyncState('idle');
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    if (!navigator.onLine) setSyncState('offline');
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   const initials = (user?.displayName || user?.email || 'م')
@@ -566,27 +597,7 @@ export default function AppHeader({ onMobileDrawerToggle, onToggleSidebar, colla
           </button>
         )}
 
-        {showDensityToggle && (
-          <button
-            onClick={toggle}
-            style={{
-              background: density === FIELD_DENSITY.PRO ? 'var(--primary-light)' : 'none',
-              border: density === FIELD_DENSITY.PRO ? '1px solid var(--primary)' : '1px solid var(--border)',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: 13,
-              padding: '6px 10px',
-              color: density === FIELD_DENSITY.PRO ? 'var(--primary)' : 'var(--text-secondary)',
-              transition: 'all 0.15s',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-            }}
-            title={density === FIELD_DENSITY.BASIC ? 'تفعيل الوضع الاحترافي' : 'تفعيل الوضع الأساسي'}
-            aria-label={density === FIELD_DENSITY.BASIC ? 'تفعيل الوضع الاحترافي' : 'تفعيل الوضع الأساسي'}
-          >
-            {density === FIELD_DENSITY.BASIC ? '⚙️ احترافي' : '🧾 أساسي'}
-          </button>
-        )}
+
 
         <button
           onClick={toggleSensitiveMode}
@@ -605,6 +616,64 @@ export default function AppHeader({ onMobileDrawerToggle, onToggleSidebar, colla
         >
           {sensitiveHidden ? '🙈' : '👁️'}
         </button>
+
+        {subscriptionManager.hasFeature('cloudSync') && (
+          <div
+            title={
+              syncState === 'uploading' ? 'جاري رفع الملفات...'
+                : syncState === 'error' ? 'خطأ في المزامنة — اضغط للتفاصيل'
+                  : syncState === 'offline' ? 'غير متصل بالإنترنت'
+                    : 'المزامنة تعمل بشكل طبيعي'
+            }
+            onClick={() => { window.location.href = '/settings#sync'; }}
+            style={{
+              position: 'relative',
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 8,
+              cursor: 'pointer',
+              border: '1px solid',
+              borderColor:
+                syncState === 'error' ? '#fecaca'
+                  : syncState === 'offline' ? '#e2e8f0'
+                    : syncState === 'uploading' ? '#bfdbfe'
+                      : 'transparent',
+              background:
+                syncState === 'error' ? '#fff5f5'
+                  : syncState === 'offline' ? '#f8fafc'
+                    : syncState === 'uploading' ? '#eff6ff'
+                      : 'transparent',
+              transition: 'all 0.2s',
+              fontSize: 16,
+            }}
+          >
+            {syncState === 'uploading' ? '⏳' : syncState === 'error' ? '⚠️' : syncState === 'offline' ? '📴' : '☁️'}
+            {syncState === 'error' && (
+              <span style={{
+                position: 'absolute',
+                top: 2, left: 2,
+                width: 8, height: 8,
+                borderRadius: '50%',
+                background: '#dc2626',
+                border: '1.5px solid white',
+              }} />
+            )}
+            {syncState === 'uploading' && (
+              <span style={{
+                position: 'absolute',
+                top: 2, left: 2,
+                width: 8, height: 8,
+                borderRadius: '50%',
+                background: '#2563eb',
+                border: '1.5px solid white',
+                animation: 'pulse 1.5s infinite',
+              }} />
+            )}
+          </div>
+        )}
 
         <div ref={bellRef} style={{ position: 'relative' }}>
           <button

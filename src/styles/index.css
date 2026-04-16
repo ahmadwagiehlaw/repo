@@ -117,8 +117,13 @@ body {
 }
 
 @keyframes pulse {
-	0%, 100% { transform: scale(1); }
-	50% { transform: scale(1.2); }
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
 }
 
 @keyframes fadeIn {
@@ -226,6 +231,11 @@ body {
 	--radius-lg: 16px;
 	--shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
 	--shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+	--font-scale: 1;
+	--font-xs: calc(11px * var(--font-scale));
+	--font-sm: calc(13px * var(--font-scale));
+	--font-md: calc(14px * var(--font-scale));
+	--font-lg: calc(16px * var(--font-scale));
 	--success: #16a34a;
 	--success-light: #dcfce7;
 	--danger: #dc2626;
@@ -1033,3 +1043,22 @@ body {
 		color: #334155 !important;
 	}
 }
+
+/* ── Font size utilities ─────────────────────── */
+.text-xs  { font-size: var(--font-xs, 11px); }
+.text-sm  { font-size: var(--font-sm, 13px); }
+.text-md  { font-size: var(--font-md, 14px); }
+.text-lg  { font-size: var(--font-lg, 16px); }
+
+/* ── Sync icon animation ─────────────────────── */
+.sync-spinning { animation: spin 1s linear infinite; }
+.sync-pulsing  { animation: pulse 1.5s ease-in-out infinite; }
+
+/* ── Scrollbar polish ────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+	background: var(--border);
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
