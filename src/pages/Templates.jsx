@@ -1066,6 +1066,42 @@ const S = {
 export default function Templates() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Dashboard prefill integration
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const prefill = params.get('prefill');
+    const mode    = params.get('mode');
+
+    if (prefill === 'stats') {
+      // Auto-select the 'report' template type to guide user
+      setTemplateType('report');
+      setSidebarFilter('report');
+      // Show a banner/hint — set a success message
+      setSuccessMsg('تم فتح نماذج التقارير — اختر نموذجاً لدمج الإحصائيات تلقائياً');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    }
+
+    if (mode === 'custom-report') {
+      setTemplateType('report');
+      setSidebarFilter('report');
+      setTemplateName('تقرير مخصص — ' + new Date().toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' }));
+      setTemplateContent(
+        `<h2 style="text-align:center">تقرير إحصائي</h2>
+<p style="text-align:center">{{اسم_مساحة_العمل}} — {{تاريخ_اليوم}}</p>
+<hr/>
+<h3>أولاً: إجمالي القضايا</h3>
+<p>يبلغ إجمالي قضايا المكتب خلال هذه الفترة...</p>
+<h3>ثانياً: الجلسات</h3>
+<p>بلغ عدد الجلسات المحددة...</p>
+<h3>ثالثاً: الأحكام المنتظرة</h3>
+<p>يوجد حالياً...</p>`
+      );
+      setSuccessMsg('تم إنشاء قالب تقرير مخصص — أكمل البيانات واحفظ');
+      setTimeout(() => setSuccessMsg(''), 5000);
+    }
+  }, [location.search]);
+
   const editorRef = useRef(null);
   const editorShellRef = useRef(null);
   const pasteEditorRef = useRef(null);
