@@ -418,21 +418,33 @@ export default function CasesList() {
                       🗑
                     </button>
                     {caseItem.criticalHighlightUrl && (
-                      <a
-                        href={caseItem.criticalHighlightUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
                         title="فتح الملف / الإجراء المهم"
-                        onClick={e => e.stopPropagation()}
+                        onClick={e => {
+                          e.stopPropagation();
+                          const url = caseItem.criticalHighlightUrl;
+                          if (!url) return;
+                          if (url.startsWith('data:')) {
+                            const mimeType = url.split(',')[0].split(':')[1].split(';')[0];
+                            const byteString = atob(url.split(',')[1]);
+                            const ab = new ArrayBuffer(byteString.length);
+                            const ia = new Uint8Array(ab);
+                            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                            const blob = new Blob([ab], { type: mimeType });
+                            window.open(URL.createObjectURL(blob), '_blank');
+                          } else {
+                            window.open(url, '_blank');
+                          }
+                        }}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           width: 28, height: 28, borderRadius: 6,
                           background: '#1e293b', border: '1px solid #f59e0b',
                           color: '#fbbf24', fontSize: 14, flexShrink: 0,
-                          textDecoration: 'none', cursor: 'pointer',
+                          cursor: 'pointer',
                           marginInlineStart: 'auto',
                         }}
-                      >⚡</a>
+                      >⚡</button>
                     )}
                   </div>
 

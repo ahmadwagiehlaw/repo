@@ -365,11 +365,23 @@ export default function CaseSidePanel() {
                   <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <CaseNumberBadge caseNumber={caseData.caseNumber} caseYear={caseData.caseYear} caseData={caseData} displayOrder={displaySettings.caseNumberDisplayOrder} style={{ fontSize: 18 }} />
                     {caseData?.criticalHighlightUrl && (
-                      <a
-                        href={caseData.criticalHighlightUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
                         title="فتح الملف / الإجراء المهم مباشرة"
+                        onClick={() => {
+                          const url = caseData.criticalHighlightUrl;
+                          if (!url) return;
+                          if (url.startsWith('data:')) {
+                            const mimeType = url.split(',')[0].split(':')[1].split(';')[0];
+                            const byteString = atob(url.split(',')[1]);
+                            const ab = new ArrayBuffer(byteString.length);
+                            const ia = new Uint8Array(ab);
+                            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                            const blob = new Blob([ab], { type: mimeType });
+                            window.open(URL.createObjectURL(blob), '_blank');
+                          } else {
+                            window.open(url, '_blank');
+                          }
+                        }}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -381,13 +393,13 @@ export default function CaseSidePanel() {
                           border: '1px solid #f59e0b',
                           borderRadius: '8px',
                           padding: '5px 10px',
-                          textDecoration: 'none',
                           cursor: 'pointer',
                           whiteSpace: 'nowrap',
+                          fontFamily: 'Cairo',
                         }}
                       >
                         ⚡ فتح الملف المهم
-                      </a>
+                      </button>
                     )}
                     <button
                       type="button"
