@@ -16,6 +16,7 @@ import {
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { setDisplaySettings } from '@/utils/caseUtils.js';
 import { confirmDialog, promptDialog } from '@/utils/browserFeedback.js';
+import cloudSyncService from '@/services/CloudSyncService.js';
 
 const SETTINGS_TABS = [
   { id: 'general', label: '⚙️ عام', desc: 'اسم المساحة والهوية', group: 1 },
@@ -691,6 +692,9 @@ export default function Settings() {
   const [customFieldsDirty, setCustomFieldsDirty] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [brandSub, setBrandSub] = useState('');
+  const [syncProgress, setSyncProgress] = useState({});
+  const [syncStats, setSyncStats] = useState({ queued: 0, uploading: 0, done: 0, error: 0 });
+  const isPro = subscriptionManager.hasFeature('cloudSync');
 
   const workspaceId = String(currentWorkspace?.id || '').trim();
   // TODO: replace ownerId fallback with authenticated user uid when AuthContext path is confirmed
@@ -731,6 +735,20 @@ export default function Settings() {
       setMembersLoading(false);
     });
   }, [workspaceId, activeTab]);
+
+  useEffect(() => {
+    const unsub = cloudSyncService.onProgress((progress) => {
+      setSyncProgress({ ...progress });
+      const values = Object.values(progress);
+      setSyncStats({
+        queued: values.filter((p) => p.status === 'queued').length,
+        uploading: values.filter((p) => p.status === 'uploading').length,
+        done: values.filter((p) => p.status === 'done').length,
+        error: values.filter((p) => p.status === 'error').length,
+      });
+    });
+    return unsub;
+  }, []);
 
   const handleMemberRoleChange = async (member, nextRole) => {
     const memberId = String(member?.uid || member?.id || '').trim();
@@ -1645,13 +1663,236 @@ export default function Settings() {
       )}
 
       {activeTab === 'sync' && (
-        <div style={{ maxWidth: 920 }}>
-          <div className="card">
-            <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>☁️ إعدادات المزامنة</h3>
-            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              إعدادات المزامنة السحابية مع Firebase Storage — قريباً.
+        <div style={{ display: 'grid', gap: 12, maxWidth: 900 }}>
+          {/* ── بطاقة الحالة العامة ── */}
+          <div className="card" style={{
+            background: isPro
+              ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)'
+              : 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+            border: isPro ? '1px solid #86efac' : '1px solid var(--border)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: isPro ? '#16a34a' : '#94a3b8',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20,
+                }}>
+                  {isPro ? '☁️' : '🔒'}
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {isPro ? 'المزامنة السحابية مفعّلة' : 'المزامنة السحابية'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {isPro ? 'ملفاتك تُزامن تلقائياً مع Firebase Storage' : 'متاحة في خطة Pro وما فوق'}
+                  </div>
+                </div>
+              </div>
+              {!isPro && (
+                <a href="/activate" style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  background: '#f59e0b', color: 'white',
+                  fontFamily: 'Cairo', fontSize: 12, fontWeight: 700,
+                  textDecoration: 'none',
+                }}>
+                  🚀 ترقية للـ Pro
+                </a>
+              )}
             </div>
+
+            {isPro && (syncStats.queued > 0 || syncStats.uploading > 0 || syncStats.done > 0 || syncStats.error > 0) && (
+              <div style={{
+                marginTop: 14,
+                display: 'flex', gap: 16, flexWrap: 'wrap',
+              }}>
+                {[
+                  { key: 'uploading', label: 'جاري الرفع', color: '#2563eb', icon: '⏳' },
+                  { key: 'queued', label: 'في الانتظار', color: '#d97706', icon: '🕐' },
+                  { key: 'done', label: 'تم الرفع', color: '#16a34a', icon: '✅' },
+                  { key: 'error', label: 'فشل', color: '#dc2626', icon: '⚠️' },
+                ].filter(({ key }) => syncStats[key] > 0).map(({ key, label, color, icon }) => (
+                  <div key={key} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 12, color,
+                  }}>
+                    <span>{icon}</span>
+                    <span style={{ fontWeight: 700 }}>{syncStats[key]}</span>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* ── إعدادات المزامنة (Pro فقط) ── */}
+          {isPro ? (
+            <>
+              <div className="card">
+                <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>⚙️ إعدادات المزامنة</h3>
+
+                <div className="form-group">
+                  <label className="form-label">وضع المزامنة</label>
+                  <select
+                    className="form-input"
+                    value={settings.syncMode || 'auto'}
+                    onChange={(e) => setSettings((s) => ({ ...s, syncMode: e.target.value }))}
+                    disabled={!canManageWorkspaceSettings}
+                  >
+                    <option value="auto">تلقائي — رفع فور الحفظ المحلي</option>
+                    <option value="manual">يدوي — أرفع عند الضغط على الزر</option>
+                    <option value="off">إيقاف المزامنة مؤقتاً</option>
+                  </select>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                    في الوضع التلقائي تبدأ المزامنة فور حفظ أي مرفق محلياً. في الوضع اليدوي يمكنك التحكم الكامل في توقيت الرفع.
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: 12 }}>
+                  <label className="form-label">الحد الأقصى لحجم الملف المُزامن (MB)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="number"
+                      className="form-input"
+                      style={{ width: 120 }}
+                      min={1}
+                      max={100}
+                      value={settings.syncMaxFileSizeMB ?? 25}
+                      onChange={(e) => setSettings((s) => ({ ...s, syncMaxFileSizeMB: Math.max(1, Math.min(100, Number(e.target.value || 25))) }))}
+                      disabled={!canManageWorkspaceSettings}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      الملفات الأكبر من هذا الحد لن تُرفع تلقائياً
+                    </span>
+                  </div>
+                </div>
+
+                <Toggle
+                  label="ضغط الصور قبل الرفع (يُقلل الاستهلاك)"
+                  value={settings.syncCompressImages ?? true}
+                  onChange={(v) => setSettings((s) => ({ ...s, syncCompressImages: v }))}
+                  disabled={!canManageWorkspaceSettings}
+                />
+
+                <Toggle
+                  label="إعادة المحاولة تلقائياً عند الفشل"
+                  value={settings.syncAutoRetry ?? true}
+                  onChange={(v) => setSettings((s) => ({ ...s, syncAutoRetry: v }))}
+                  disabled={!canManageWorkspaceSettings}
+                />
+
+                <Toggle
+                  label="مزامنة على الشبكات المحدودة (بيانات موبايل)"
+                  value={settings.syncOnMobile ?? false}
+                  onChange={(v) => setSettings((s) => ({ ...s, syncOnMobile: v }))}
+                  disabled={!canManageWorkspaceSettings}
+                />
+              </div>
+
+              {/* ── تفاصيل التقدم ── */}
+              {Object.keys(syncProgress).length > 0 && (
+                <div className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: 15 }}>📊 تفاصيل المزامنة الحالية</h3>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {Object.keys(syncProgress).length} ملف
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
+                    {Object.entries(syncProgress).map(([attachmentId, prog]) => (
+                      <div key={attachmentId} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 10px', borderRadius: 8,
+                        background: prog.status === 'error' ? '#fef2f2'
+                          : prog.status === 'done' ? '#f0fdf4'
+                          : 'var(--bg-page)',
+                        border: '1px solid',
+                        borderColor: prog.status === 'error' ? '#fecaca'
+                          : prog.status === 'done' ? '#bbf7d0'
+                          : 'var(--border-light)',
+                      }}>
+                        <span style={{ fontSize: 16 }}>
+                          {prog.status === 'done' ? '✅'
+                            : prog.status === 'error' ? '⚠️'
+                              : prog.status === 'uploading' ? '⏳'
+                                : '🕐'}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {attachmentId}
+                          </div>
+                          {prog.status === 'uploading' && (
+                            <div style={{ marginTop: 4, height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{
+                                height: '100%', borderRadius: 2,
+                                background: 'var(--primary)',
+                                width: `${prog.pct || 0}%`,
+                                transition: 'width 0.3s',
+                              }} />
+                            </div>
+                          )}
+                          {prog.status === 'error' && (
+                            <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>
+                              {prog.error || 'خطأ في الرفع'}
+                            </div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {prog.status === 'uploading' ? `${prog.pct}%`
+                            : prog.status === 'done' ? 'تم'
+                              : prog.status === 'error' ? 'فشل'
+                                : 'انتظار'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                className="btn-primary"
+                onClick={saveSettings}
+                disabled={saving || !canManageWorkspaceSettings}
+                style={{ width: 'fit-content' }}
+              >
+                {saving ? 'جاري الحفظ...' : '💾 حفظ إعدادات المزامنة'}
+              </button>
+            </>
+          ) : (
+            <div className="card">
+              <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>☁️ ما الذي تحصل عليه في Pro؟</h3>
+              <div style={{ display: 'grid', gap: 10 }}>
+                {[
+                  { icon: '🔄', title: 'مزامنة تلقائية فورية', desc: 'كل مرفق يُرفع لحظة حفظه محلياً' },
+                  { icon: '📡', title: 'Offline-First', desc: 'التطبيق يعمل بدون إنترنت — المزامنة تحصل لما يرجع الاتصال' },
+                  { icon: '🔒', title: 'نسخ احتياطية آمنة', desc: 'ملفاتك في Firebase Storage بأمان' },
+                  { icon: '⚙️', title: 'تحكم كامل', desc: 'اختر تلقائي أو يدوي، وحدد حجم الملف وضغط الصور' },
+                ].map(({ icon, title, desc }) => (
+                  <div key={title} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '10px 12px', borderRadius: 8,
+                    background: 'var(--bg-page)', border: '1px solid var(--border-light)',
+                  }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>{icon}</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <a href="/activate" style={{
+                display: 'inline-block', marginTop: 16,
+                padding: '10px 20px', borderRadius: 10,
+                background: '#f59e0b', color: 'white',
+                fontFamily: 'Cairo', fontSize: 13, fontWeight: 700,
+                textDecoration: 'none',
+              }}>
+                🚀 ترقية إلى Pro الآن
+              </a>
+            </div>
+          )}
         </div>
       )}
 
