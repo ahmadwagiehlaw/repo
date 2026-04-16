@@ -34,12 +34,19 @@ export default function SessionsLog() {
     const entries = Array.isArray(roll.entries) ? roll.entries : [];
     const rows = entries.map((e) => `
       <tr>
-        <td>${e.caseNumber || ''}${e.caseYear ? '/' + e.caseYear : ''}</td>
+        <td>${e.caseNumber && e.caseYear
+          ? (String(e.caseNumber).includes('/')
+              ? e.caseNumber
+              : e.caseNumber + '/' + e.caseYear)
+          : (e.caseNumber || e.caseYear || '—')
+        }</td>
         <td>${e.clientName || '—'}</td>
-        <td>${e.court || '—'}</td>
-        <td>${e.sessionType || '—'}</td>
-        <td>${e.decision || '—'}</td>
+        <td>${e.defendantName || '—'}</td>
+        <td>${e.sessionDate || '—'}</td>
         <td>${e.nextDate || '—'}</td>
+        <td>${e.decision || '—'}</td>
+        <td>${e.sessionType || '—'}</td>
+        <td>${e.sessionMinute || '—'}</td>
         <td>${e.notes || '—'}</td>
       </tr>
     `).join('');
@@ -67,10 +74,12 @@ export default function SessionsLog() {
             <tr>
               <th>رقم الدعوى</th>
               <th>المدعي</th>
-              <th>المحكمة</th>
-              <th>نوع الجلسة</th>
-              <th>القرار</th>
+              <th>المدعى عليه</th>
+              <th>الجلسة السابقة</th>
               <th>الجلسة القادمة</th>
+              <th>القرار</th>
+              <th>نوع الجلسة</th>
+              <th>محضر الجلسة</th>
               <th>ملاحظات</th>
             </tr>
           </thead>
